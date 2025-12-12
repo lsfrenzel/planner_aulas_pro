@@ -38,7 +38,7 @@ class Turma(db.Model):
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    schedules = db.relationship('Schedule', backref='turma', lazy=True)
+    schedules = db.relationship('Schedule', backref='turma', lazy=True, cascade='all, delete-orphan')
     
     def to_dict(self):
         schedule_count = len([s for s in self.schedules if s]) if self.schedules else 0
@@ -58,7 +58,7 @@ class Schedule(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id'), nullable=True)
+    turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id', ondelete='CASCADE'), nullable=False)
     semana = db.Column(db.Integer, nullable=False)
     atividades = db.Column(db.Text, default='')
     unidade_curricular = db.Column(db.String(200), default='')

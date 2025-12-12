@@ -551,12 +551,16 @@ def run_migration():
             );
         """))
         db.session.execute(db.text("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE;"))
-        db.session.execute(db.text("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS turma_id INTEGER REFERENCES turmas(id) ON DELETE SET NULL;"))
+        db.session.execute(db.text("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS turma_id INTEGER REFERENCES turmas(id) ON DELETE CASCADE;"))
         db.session.commit()
         
         users = User.query.all()
         for user in users:
-            orphan_schedules = Schedule.query.filter_by(user_id=user.id, turma_id=None).all()
+            orphan_schedules = db.session.execute(
+                db.text("SELECT id FROM schedules WHERE user_id = :uid AND turma_id IS NULL"),
+                {"uid": user.id}
+            ).fetchall()
+            
             if orphan_schedules:
                 default_turma = Turma.query.filter_by(user_id=user.id).first()
                 if not default_turma:
@@ -570,11 +574,19 @@ def run_migration():
                     db.session.add(default_turma)
                     db.session.commit()
                 
-                for schedule in orphan_schedules:
-                    schedule.turma_id = default_turma.id
+                db.session.execute(
+                    db.text("UPDATE schedules SET turma_id = :tid WHERE user_id = :uid AND turma_id IS NULL"),
+                    {"tid": default_turma.id, "uid": user.id}
+                )
                 db.session.commit()
         
-        return jsonify({"success": True, "message": "Migracao executada com sucesso! Schedules orfaos associados a turma padrao."})
+        try:
+            db.session.execute(db.text("ALTER TABLE schedules ALTER COLUMN turma_id SET NOT NULL;"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        
+        return jsonify({"success": True, "message": "Migracao executada com sucesso! Schedules associados a turmas, constraint NOT NULL aplicada."})
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
