@@ -185,6 +185,94 @@ def admin_panel():
     return render_template("admin.html", user=session)
 
 
+@app.route("/turmas")
+@login_required
+def turmas_page():
+    return render_template("turmas.html", user=session)
+
+
+@app.route("/api/turmas", methods=["GET"])
+@login_required
+def get_turmas():
+    from models import Turma
+    user_id = session['user_id']
+    turmas = Turma.query.filter_by(user_id=user_id, active=True).order_by(Turma.nome).all()
+    return jsonify([t.to_dict() for t in turmas])
+
+
+@app.route("/api/turmas", methods=["POST"])
+@login_required
+def add_turma():
+    from models import Turma
+    
+    user_id = session['user_id']
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "Dados invalidos"}), 400
+    
+    nome = data.get("nome", "").strip()
+    descricao = data.get("descricao", "").strip()
+    cor = data.get("cor", "blue")
+    
+    if not nome:
+        return jsonify({"error": "Nome da turma e obrigatorio"}), 400
+    
+    turma = Turma(
+        user_id=user_id,
+        nome=nome,
+        descricao=descricao,
+        cor=cor,
+        active=True
+    )
+    db.session.add(turma)
+    db.session.commit()
+    
+    return jsonify(turma.to_dict()), 201
+
+
+@app.route("/api/turmas/<int:turma_id>", methods=["PUT"])
+@login_required
+def update_turma(turma_id):
+    from models import Turma
+    
+    user_id = session['user_id']
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "Dados invalidos"}), 400
+    
+    turma = Turma.query.filter_by(id=turma_id, user_id=user_id).first()
+    
+    if not turma:
+        return jsonify({"error": "Turma nao encontrada"}), 404
+    
+    turma.nome = data.get("nome", turma.nome).strip()
+    turma.descricao = data.get("descricao", turma.descricao).strip()
+    turma.cor = data.get("cor", turma.cor)
+    
+    db.session.commit()
+    
+    return jsonify(turma.to_dict())
+
+
+@app.route("/api/turmas/<int:turma_id>", methods=["DELETE"])
+@login_required
+def delete_turma(turma_id):
+    from models import Turma
+    
+    user_id = session['user_id']
+    turma = Turma.query.filter_by(id=turma_id, user_id=user_id).first()
+    
+    if not turma:
+        return jsonify({"error": "Turma nao encontrada"}), 404
+    
+    turma.active = False
+    db.session.commit()
+    
+    return jsonify({"message": "Turma excluida com sucesso"})
+
+
 @app.route("/api/users", methods=["GET"])
 @admin_required
 def get_users():
@@ -406,7 +494,19 @@ def toggle_week_complete(week_id):
 @app.route("/api/migrate")
 def run_migration():
     try:
+        db.session.execute(db.text("""
+            CREATE TABLE IF NOT EXISTS turmas (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                nome VARCHAR(200) NOT NULL,
+                descricao TEXT DEFAULT '',
+                cor VARCHAR(20) DEFAULT 'blue',
+                active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
         db.session.execute(db.text("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE;"))
+        db.session.execute(db.text("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS turma_id INTEGER REFERENCES turmas(id) ON DELETE CASCADE;"))
         db.session.commit()
         return jsonify({"success": True, "message": "Migracao executada com sucesso!"})
     except Exception as e:
