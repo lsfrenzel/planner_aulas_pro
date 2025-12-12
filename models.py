@@ -12,6 +12,8 @@ class User(db.Model):
     role = db.Column(db.String(20), default='user')
     cargo = db.Column(db.String(100), default='')
     photo = db.Column(db.String(255), default='')
+    photo_data = db.Column(db.Text, default='')
+    photo_mimetype = db.Column(db.String(50), default='')
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -26,6 +28,7 @@ class User(db.Model):
             'role': self.role,
             'cargo': self.cargo,
             'photo': self.photo,
+            'has_photo': bool(self.photo_data),
             'active': self.active,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

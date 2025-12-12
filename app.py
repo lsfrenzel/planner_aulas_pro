@@ -121,6 +121,8 @@ def run_migrations():
         ("turmas", "data_fim", "ALTER TABLE turmas ADD COLUMN data_fim DATE"),
         ("users", "cargo", "ALTER TABLE users ADD COLUMN cargo VARCHAR(100) DEFAULT ''"),
         ("users", "photo", "ALTER TABLE users ADD COLUMN photo VARCHAR(255) DEFAULT ''"),
+        ("users", "photo_data", "ALTER TABLE users ADD COLUMN photo_data TEXT DEFAULT ''"),
+        ("users", "photo_mimetype", "ALTER TABLE users ADD COLUMN photo_mimetype VARCHAR(50) DEFAULT ''"),
     ]
     
     for table, column, sql in migrations:
@@ -215,8 +217,8 @@ def logout():
 def index():
     from models import User
     user_data = User.query.get(session['user_id'])
-    user_photo = user_data.photo if user_data and user_data.photo else ''
-    return render_template("index.html", user=session, user_photo=user_photo)
+    has_photo = bool(user_data and user_data.photo_data)
+    return render_template("index.html", user=session, user_id=session['user_id'], has_photo=has_photo)
 
 
 @app.route("/dashboard")
@@ -239,14 +241,15 @@ def dashboard():
                 recursos_set.add(r.strip())
     
     user_data = User.query.get(user_id)
-    user_photo = user_data.photo if user_data and user_data.photo else ''
+    has_photo = bool(user_data and user_data.photo_data)
     
     return render_template("dashboard.html", 
                           user=session, 
+                          user_id=user_id,
                           weeks=weeks,
                           unidades=list(unidades),
                           recursos=list(recursos_set),
-                          user_photo=user_photo)
+                          has_photo=has_photo)
 
 
 @app.route("/admin")
@@ -260,8 +263,8 @@ def admin_panel():
 def turmas_page():
     from models import User
     user_data = User.query.get(session['user_id'])
-    user_photo = user_data.photo if user_data and user_data.photo else ''
-    return render_template("turmas.html", user=session, user_photo=user_photo)
+    has_photo = bool(user_data and user_data.photo_data)
+    return render_template("turmas.html", user=session, user_id=session['user_id'], has_photo=has_photo)
 
 
 @app.route("/perfil")
@@ -276,8 +279,7 @@ def perfil_page():
 @login_required
 def atualizar_perfil():
     from models import User
-    import uuid
-    from werkzeug.utils import secure_filename
+    import base64
     
     user = User.query.get(session['user_id'])
     if not user:
@@ -293,28 +295,23 @@ def atualizar_perfil():
     
     user.cargo = cargo
     
-    upload_folder = os.path.join('static', 'uploads', 'profiles')
-    os.makedirs(upload_folder, exist_ok=True)
-    
     if 'photo' in request.files:
         photo = request.files['photo']
         if photo and photo.filename and photo.filename.strip():
             allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
             ext = photo.filename.rsplit('.', 1)[-1].lower() if '.' in photo.filename else ''
             if ext in allowed_extensions:
-                filename = f"{user.id}_{uuid.uuid4().hex[:8]}.{ext}"
-                filepath = os.path.join(upload_folder, filename)
-                photo.save(filepath)
-                old_photo = user.photo
-                if old_photo:
-                    old_photo_path = os.path.join(upload_folder, old_photo)
-                    if os.path.exists(old_photo_path):
-                        try:
-                            os.remove(old_photo_path)
-                        except:
-                            pass
-                user.photo = filename
-                db.session.add(user)
+                mime_types = {
+                    'png': 'image/png',
+                    'jpg': 'image/jpeg',
+                    'jpeg': 'image/jpeg',
+                    'gif': 'image/gif',
+                    'webp': 'image/webp'
+                }
+                photo_data = base64.b64encode(photo.read()).decode('utf-8')
+                user.photo_data = photo_data
+                user.photo_mimetype = mime_types.get(ext, 'image/jpeg')
+                user.photo = f"db_photo_{user.id}"
             else:
                 flash("Formato de imagem nao permitido. Use PNG, JPG, JPEG, GIF ou WEBP.", "error")
                 return redirect(url_for('perfil_page'))
@@ -327,6 +324,27 @@ def atualizar_perfil():
         flash(f"Erro ao salvar perfil: {str(e)}", "error")
     
     return redirect(url_for('perfil_page'))
+
+
+@app.route("/api/user-photo/<int:user_id>")
+def get_user_photo(user_id):
+    from models import User
+    import base64
+    
+    user = User.query.get(user_id)
+    if user and user.photo_data:
+        try:
+            photo_bytes = base64.b64decode(user.photo_data)
+            return Response(photo_bytes, mimetype=user.photo_mimetype or 'image/jpeg')
+        except Exception:
+            pass
+    
+    svg_placeholder = '''<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="50" fill="#e2e8f0"/>
+        <circle cx="50" cy="35" r="18" fill="#94a3b8"/>
+        <ellipse cx="50" cy="80" rx="30" ry="25" fill="#94a3b8"/>
+    </svg>'''
+    return Response(svg_placeholder, mimetype='image/svg+xml')
 
 
 @app.route("/perfil/alterar-senha", methods=["POST"])

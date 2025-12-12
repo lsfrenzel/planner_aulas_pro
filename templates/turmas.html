@@ -59,8 +59,8 @@
                         <i class="fas fa-sun text-yellow-400 hidden dark:block"></i>
                     </button>
                     <div class="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-700">
-                        {% if user_photo %}
-                        <img src="/static/uploads/profiles/{{ user_photo }}" alt="Foto de perfil" class="w-8 h-8 rounded-full object-cover border-2 border-primary-200">
+                        {% if has_photo %}
+                        <img src="/api/user-photo/{{ user_id }}" alt="Foto de perfil" class="w-8 h-8 rounded-full object-cover border-2 border-primary-200">
                         {% else %}
                         <div class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
                             <i class="fas fa-user text-primary-500 text-sm"></i>

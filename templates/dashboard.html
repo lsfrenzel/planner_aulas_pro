@@ -114,8 +114,8 @@
                     
                     <div class="relative">
                         <button onclick="toggleUserMenu()" class="flex items-center gap-2 p-1.5 pr-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
-                            {% if user_photo %}
-                            <img src="/static/uploads/profiles/{{ user_photo }}" alt="Foto de perfil" class="w-8 h-8 rounded-lg object-cover">
+                            {% if has_photo %}
+                            <img src="/api/user-photo/{{ user_id }}" alt="Foto de perfil" class="w-8 h-8 rounded-lg object-cover">
                             {% else %}
                             <div class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
                                 <i class="fas fa-user text-primary-500 text-sm"></i>
