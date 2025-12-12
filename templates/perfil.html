@@ -93,8 +93,8 @@
             <div class="lg:col-span-1">
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 text-center">
                     <div class="relative inline-block mb-4">
-                        {% if user_data.photo %}
-                        <img src="{{ url_for('static', filename='uploads/profiles/' + user_data.photo) }}" 
+                        {% if user_data.photo_data %}
+                        <img src="{{ url_for('get_user_photo', user_id=user_data.id) }}" 
                              alt="Foto de perfil" 
                              class="w-32 h-32 rounded-full object-cover border-4 border-primary-500">
                         {% else %}
