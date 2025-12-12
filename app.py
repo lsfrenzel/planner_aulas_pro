@@ -403,6 +403,17 @@ def toggle_week_complete(week_id):
     return jsonify(schedule.to_dict())
 
 
+@app.route("/api/migrate")
+def run_migration():
+    try:
+        db.session.execute(db.text("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE;"))
+        db.session.commit()
+        return jsonify({"success": True, "message": "Migracao executada com sucesso!"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/export/json")
 @login_required
 def export_json():
