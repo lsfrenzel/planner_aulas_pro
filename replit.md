@@ -92,6 +92,8 @@ O projeto está configurado para deploy no Railway:
 - email-validator 2.3.0
 
 ## Recent Changes
+- 2025-12-12: Corrigido relacionamento entre Schedule e Turma para evitar erros de FK
+- 2025-12-12: Removido cascade delete para turmas (turmas agora são opcionais)
 - 2025-12-12: Adicionado dashboard com visualização em tabela de todas as semanas
 - 2025-12-12: Migrado de SQLite para PostgreSQL (compatível com Railway)
 - 2025-12-12: Adicionados arquivos de deploy (Procfile, requirements.txt, runtime.txt)

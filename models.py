@@ -38,8 +38,6 @@ class Turma(db.Model):
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    schedules = db.relationship('Schedule', backref='turma', lazy=True, cascade='all, delete-orphan')
-    
     def to_dict(self):
         return {
             'id': self.id,
@@ -56,7 +54,7 @@ class Schedule(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id'), nullable=True)
+    turma_id = db.Column(db.Integer, nullable=True)
     semana = db.Column(db.Integer, nullable=False)
     atividades = db.Column(db.Text, default='')
     unidade_curricular = db.Column(db.String(200), default='')
@@ -67,10 +65,18 @@ class Schedule(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):
+        turma_nome = None
+        if self.turma_id:
+            try:
+                turma = Turma.query.get(self.turma_id)
+                if turma:
+                    turma_nome = turma.nome
+            except Exception:
+                pass
         return {
             'id': self.id,
             'turma_id': self.turma_id,
-            'turma_nome': self.turma.nome if self.turma else None,
+            'turma_nome': turma_nome,
             'semana': self.semana,
             'atividades': self.atividades,
             'unidadeCurricular': self.unidade_curricular,
