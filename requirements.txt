@@ -6,3 +6,15 @@ email-validator==2.3.0
 reportlab==4.4.6
 werkzeug==3.0.1
 sqlalchemy==2.0.23
+email_validator
+flask
+flask-sqlalchemy
+gunicorn
+psycopg2-binary
+email-validator
+flask
+flask-sqlalchemy
+gunicorn
+psycopg2-binary
+reportlab
+werkzeug
