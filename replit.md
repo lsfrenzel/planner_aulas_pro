@@ -36,8 +36,11 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - **static/css/style.css**: Estilos customizados
 
 ### Banco de Dados
-- **data/weeks.json**: Armazena o cronograma (20 semanas pré-preenchidas)
-- **data/users.db**: Banco SQLite para usuários
+- **data/users.db**: Banco SQLite contendo:
+  - **users**: Tabela de usuários (id, name, email, password_hash, role, active)
+  - **schedules**: Tabela de cronogramas por usuário (id, user_id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos)
+- Cada usuário vê apenas seus próprios cronogramas
+- O admin inicial recebe os dados migrados do weeks.json original
 
 ## Features
 - Autenticação de usuários com senha criptografada
@@ -66,5 +69,7 @@ O servidor inicia na porta 5000.
 - Werkzeug (hash de senhas)
 
 ## Recent Changes
+- 2025-12-12: Implementado isolamento de dados por usuário - cada usuário vê apenas seus próprios cronogramas
+- 2025-12-12: Removidas credenciais padrão da tela de login por segurança
 - 2025-12-12: Adicionado sistema de autenticação e painel admin
 - 2025-12-12: Criação inicial do projeto com todas as funcionalidades
