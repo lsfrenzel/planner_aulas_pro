@@ -781,6 +781,50 @@ def toggle_capacidade(week_id):
     })
 
 
+@app.route("/api/turmas/progress", methods=["GET"])
+@login_required
+def get_turmas_progress():
+    from models import Turma, Schedule
+    
+    user_id = session['user_id']
+    turmas = Turma.query.filter_by(user_id=user_id, active=True).all()
+    
+    progress_data = []
+    for turma in turmas:
+        schedules = Schedule.query.filter_by(user_id=user_id, turma_id=turma.id).all()
+        
+        total_weeks = len(schedules)
+        completed_weeks = sum(1 for s in schedules if s.completed)
+        
+        total_capacidades = 0
+        completed_capacidades = 0
+        
+        for s in schedules:
+            caps = [c.strip() for c in s.capacidades.split('\n') if c.strip()]
+            total_capacidades += len(caps)
+            
+            completed_list = s.capacidades_completed.split(',') if s.capacidades_completed else []
+            completed_list = [x for x in completed_list if x]
+            completed_capacidades += len(completed_list)
+        
+        weeks_percent = round((completed_weeks / total_weeks * 100) if total_weeks > 0 else 0)
+        caps_percent = round((completed_capacidades / total_capacidades * 100) if total_capacidades > 0 else 0)
+        
+        progress_data.append({
+            'id': turma.id,
+            'nome': turma.nome,
+            'cor': turma.cor,
+            'total_weeks': total_weeks,
+            'completed_weeks': completed_weeks,
+            'weeks_percent': weeks_percent,
+            'total_capacidades': total_capacidades,
+            'completed_capacidades': completed_capacidades,
+            'capacidades_percent': caps_percent
+        })
+    
+    return jsonify(progress_data)
+
+
 @app.route("/api/migrate")
 def run_migration():
     from models import User, Schedule, Turma
