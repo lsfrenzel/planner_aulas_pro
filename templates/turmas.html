@@ -114,8 +114,8 @@
         </div>
     </main>
 
-    <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
+    <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden overflow-y-auto">
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-lg mx-4 my-8 shadow-xl">
             <div class="flex items-center justify-between mb-6">
                 <h3 id="modal-title" class="text-lg font-semibold text-gray-800 dark:text-white">Nova Turma</h3>
                 <button onclick="closeModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
@@ -132,9 +132,68 @@
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descricao (opcional)</label>
-                    <textarea id="turma-descricao" rows="3"
+                    <textarea id="turma-descricao" rows="2"
                         class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white resize-none"
                         placeholder="Descricao da turma..."></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Carga Horaria (horas)</label>
+                    <input type="number" id="turma-carga-horaria" min="0"
+                        class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white"
+                        placeholder="Ex: 400">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dias de Aula</label>
+                    <div class="flex flex-wrap gap-2" id="dias-aula-container">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" value="seg" class="dia-checkbox w-4 h-4 text-primary-500 rounded">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Seg</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" value="ter" class="dia-checkbox w-4 h-4 text-primary-500 rounded">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Ter</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" value="qua" class="dia-checkbox w-4 h-4 text-primary-500 rounded">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Qua</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" value="qui" class="dia-checkbox w-4 h-4 text-primary-500 rounded">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Qui</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" value="sex" class="dia-checkbox w-4 h-4 text-primary-500 rounded">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Sex</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" value="sab" class="dia-checkbox w-4 h-4 text-primary-500 rounded">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Sab</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Horario Inicio</label>
+                        <input type="time" id="turma-horario-inicio"
+                            class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Horario Fim</label>
+                        <input type="time" id="turma-horario-fim"
+                            class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Data Inicio</label>
+                        <input type="date" id="turma-data-inicio"
+                            class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Data Fim</label>
+                        <input type="date" id="turma-data-fim"
+                            class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white">
+                    </div>
                 </div>
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cor</label>
@@ -185,6 +244,25 @@
             });
         }
 
+        function setDiasAula(diasStr) {
+            document.querySelectorAll('.dia-checkbox').forEach(cb => cb.checked = false);
+            if (diasStr) {
+                const dias = diasStr.split(',').map(d => d.trim());
+                dias.forEach(dia => {
+                    const cb = document.querySelector(`.dia-checkbox[value="${dia}"]`);
+                    if (cb) cb.checked = true;
+                });
+            }
+        }
+
+        function getDiasAula() {
+            const checked = [];
+            document.querySelectorAll('.dia-checkbox:checked').forEach(cb => {
+                checked.push(cb.value);
+            });
+            return checked.join(',');
+        }
+
         function openModal(turma = null) {
             document.getElementById('modal').classList.remove('hidden');
             if (turma) {
@@ -192,12 +270,24 @@
                 document.getElementById('turma-id').value = turma.id;
                 document.getElementById('turma-nome').value = turma.nome;
                 document.getElementById('turma-descricao').value = turma.descricao || '';
+                document.getElementById('turma-carga-horaria').value = turma.carga_horaria || '';
+                setDiasAula(turma.dias_aula || '');
+                document.getElementById('turma-horario-inicio').value = turma.horario_inicio || '';
+                document.getElementById('turma-horario-fim').value = turma.horario_fim || '';
+                document.getElementById('turma-data-inicio').value = turma.data_inicio || '';
+                document.getElementById('turma-data-fim').value = turma.data_fim || '';
                 selectColor(turma.cor || 'blue');
             } else {
                 document.getElementById('modal-title').textContent = 'Nova Turma';
                 document.getElementById('turma-id').value = '';
                 document.getElementById('turma-nome').value = '';
                 document.getElementById('turma-descricao').value = '';
+                document.getElementById('turma-carga-horaria').value = '';
+                setDiasAula('');
+                document.getElementById('turma-horario-inicio').value = '';
+                document.getElementById('turma-horario-fim').value = '';
+                document.getElementById('turma-data-inicio').value = '';
+                document.getElementById('turma-data-fim').value = '';
                 selectColor('blue');
             }
         }
@@ -239,21 +329,32 @@
                     }
                     
                     emptyState.classList.add('hidden');
-                    list.innerHTML = turmas.map(turma => `
+                    list.innerHTML = turmas.map(turma => {
+                        const diasMap = {'seg': 'Seg', 'ter': 'Ter', 'qua': 'Qua', 'qui': 'Qui', 'sex': 'Sex', 'sab': 'Sab'};
+                        const diasFormatted = turma.dias_aula ? turma.dias_aula.split(',').map(d => diasMap[d.trim()] || d).join(', ') : '';
+                        const horarioFormatted = turma.horario_inicio && turma.horario_fim ? `${turma.horario_inicio} - ${turma.horario_fim}` : '';
+                        const formatDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+                        const dataFormatted = turma.data_inicio || turma.data_fim ? `${formatDate(turma.data_inicio)} a ${formatDate(turma.data_fim)}` : '';
+                        
+                        return `
                         <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                            <div class="flex items-center gap-4">
+                            <div class="flex items-start gap-4">
                                 <div class="w-14 h-14 ${getColorClass(turma.cor)} rounded-xl flex items-center justify-center flex-shrink-0">
                                     <i class="fas fa-users text-white text-2xl"></i>
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white truncate">${turma.nome}</h3>
                                     <p class="text-sm text-gray-500 dark:text-gray-400 truncate">${turma.descricao || 'Sem descricao'}</p>
-                                    <div class="flex items-center gap-4 mt-2">
-                                        <span class="text-xs text-gray-400 dark:text-gray-500">
+                                    <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                        <span>
                                             <i class="fas fa-calendar-week mr-1"></i>
                                             ${turma.schedule_count || 0} semanas
                                         </span>
+                                        ${turma.carga_horaria ? `<span><i class="fas fa-clock mr-1"></i>${turma.carga_horaria}h</span>` : ''}
+                                        ${diasFormatted ? `<span><i class="fas fa-calendar-day mr-1"></i>${diasFormatted}</span>` : ''}
+                                        ${horarioFormatted ? `<span><i class="fas fa-hourglass-half mr-1"></i>${horarioFormatted}</span>` : ''}
                                     </div>
+                                    ${dataFormatted ? `<div class="mt-1 text-xs text-gray-400 dark:text-gray-500"><i class="fas fa-calendar-alt mr-1"></i>${dataFormatted}</div>` : ''}
                                 </div>
                                 <div class="flex flex-col sm:flex-row gap-2">
                                     <button onclick="goToSchedule(${turma.id})" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm">
@@ -269,7 +370,7 @@
                                 </div>
                             </div>
                         </div>
-                    `).join('');
+                    `}).join('');
                 });
         }
 
@@ -279,6 +380,12 @@
             const nome = document.getElementById('turma-nome').value;
             const descricao = document.getElementById('turma-descricao').value;
             const cor = document.getElementById('turma-cor').value;
+            const carga_horaria = parseInt(document.getElementById('turma-carga-horaria').value) || 0;
+            const dias_aula = getDiasAula();
+            const horario_inicio = document.getElementById('turma-horario-inicio').value;
+            const horario_fim = document.getElementById('turma-horario-fim').value;
+            const data_inicio = document.getElementById('turma-data-inicio').value;
+            const data_fim = document.getElementById('turma-data-fim').value;
 
             const method = id ? 'PUT' : 'POST';
             const url = id ? `/api/turmas/${id}` : '/api/turmas';
@@ -286,7 +393,7 @@
             fetch(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, descricao, cor })
+                body: JSON.stringify({ nome, descricao, cor, carga_horaria, dias_aula, horario_inicio, horario_fim, data_inicio, data_fim })
             })
             .then(response => response.json())
             .then(data => {

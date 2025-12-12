@@ -35,6 +35,12 @@ class Turma(db.Model):
     nome = db.Column(db.String(200), nullable=False)
     descricao = db.Column(db.Text, default='')
     cor = db.Column(db.String(20), default='blue')
+    carga_horaria = db.Column(db.Integer, default=0)
+    dias_aula = db.Column(db.String(100), default='')
+    horario_inicio = db.Column(db.String(10), default='')
+    horario_fim = db.Column(db.String(10), default='')
+    data_inicio = db.Column(db.Date, nullable=True)
+    data_fim = db.Column(db.Date, nullable=True)
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -47,6 +53,12 @@ class Turma(db.Model):
             'nome': self.nome,
             'descricao': self.descricao,
             'cor': self.cor,
+            'carga_horaria': self.carga_horaria,
+            'dias_aula': self.dias_aula,
+            'horario_inicio': self.horario_inicio,
+            'horario_fim': self.horario_fim,
+            'data_inicio': self.data_inicio.isoformat() if self.data_inicio else None,
+            'data_fim': self.data_fim.isoformat() if self.data_fim else None,
             'active': self.active,
             'schedule_count': schedule_count,
             'created_at': self.created_at.isoformat() if self.created_at else None

@@ -232,6 +232,7 @@ def get_turmas():
 @login_required
 def add_turma():
     from models import Turma
+    from datetime import datetime
     
     user_id = session['user_id']
     data = request.get_json()
@@ -242,15 +243,40 @@ def add_turma():
     nome = data.get("nome", "").strip()
     descricao = data.get("descricao", "").strip()
     cor = data.get("cor", "blue")
+    carga_horaria = data.get("carga_horaria", 0)
+    dias_aula = data.get("dias_aula", "")
+    horario_inicio = data.get("horario_inicio", "")
+    horario_fim = data.get("horario_fim", "")
+    data_inicio_str = data.get("data_inicio", "")
+    data_fim_str = data.get("data_fim", "")
     
     if not nome:
         return jsonify({"error": "Nome da turma e obrigatorio"}), 400
+    
+    data_inicio = None
+    data_fim = None
+    if data_inicio_str:
+        try:
+            data_inicio = datetime.strptime(data_inicio_str, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    if data_fim_str:
+        try:
+            data_fim = datetime.strptime(data_fim_str, "%Y-%m-%d").date()
+        except ValueError:
+            pass
     
     turma = Turma(
         user_id=user_id,
         nome=nome,
         descricao=descricao,
         cor=cor,
+        carga_horaria=carga_horaria,
+        dias_aula=dias_aula,
+        horario_inicio=horario_inicio,
+        horario_fim=horario_fim,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
         active=True
     )
     db.session.add(turma)
@@ -263,6 +289,7 @@ def add_turma():
 @login_required
 def update_turma(turma_id):
     from models import Turma
+    from datetime import datetime
     
     user_id = session['user_id']
     data = request.get_json()
@@ -278,6 +305,29 @@ def update_turma(turma_id):
     turma.nome = data.get("nome", turma.nome).strip()
     turma.descricao = data.get("descricao", turma.descricao).strip()
     turma.cor = data.get("cor", turma.cor)
+    turma.carga_horaria = data.get("carga_horaria", turma.carga_horaria)
+    turma.dias_aula = data.get("dias_aula", turma.dias_aula)
+    turma.horario_inicio = data.get("horario_inicio", turma.horario_inicio)
+    turma.horario_fim = data.get("horario_fim", turma.horario_fim)
+    
+    data_inicio_str = data.get("data_inicio", "")
+    data_fim_str = data.get("data_fim", "")
+    
+    if data_inicio_str:
+        try:
+            turma.data_inicio = datetime.strptime(data_inicio_str, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    elif "data_inicio" in data and not data_inicio_str:
+        turma.data_inicio = None
+        
+    if data_fim_str:
+        try:
+            turma.data_fim = datetime.strptime(data_fim_str, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    elif "data_fim" in data and not data_fim_str:
+        turma.data_fim = None
     
     db.session.commit()
     
