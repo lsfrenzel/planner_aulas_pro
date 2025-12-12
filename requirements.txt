@@ -72,3 +72,15 @@ psycopg2-binary
 reportlab
 werkzeug
 openpyxl
+email_validator
+flask
+flask-sqlalchemy
+gunicorn
+psycopg2-binary
+email-validator
+flask
+flask-sqlalchemy
+gunicorn
+psycopg2-binary
+reportlab
+werkzeug
