@@ -92,6 +92,9 @@ O projeto está configurado para deploy no Railway:
 - email-validator 2.3.0
 
 ## Recent Changes
+- 2025-12-12: Corrigido erro "Semana nao encontrada" no toggle de status - API agora usa ID correto
+- 2025-12-12: Dashboard agora exibe painel com informacoes da turma (carga horaria, dias, horarios, datas)
+- 2025-12-12: PDF de exportacao agora inclui cabecalho com detalhes da turma selecionada
 - 2025-12-12: Adicionados campos de carga horaria, dias/horarios de aula, e datas inicio/fim nas Turmas
 - 2025-12-12: Implementado fluxo turma-primeiro (usuario deve criar turma antes de semanas)
 - 2025-12-12: APIs de semanas agora exigem turma_id
