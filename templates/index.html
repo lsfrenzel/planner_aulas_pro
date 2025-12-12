@@ -144,6 +144,10 @@
                 </div>
                 
                 <div class="flex gap-2">
+                    <a href="/perfil" class="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20 rounded-lg transition-colors">
+                        <i class="fas fa-user-edit"></i>
+                        <span>Perfil</span>
+                    </a>
                     {% if user.user_role == 'admin' %}
                     <a href="/admin" class="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20 rounded-lg transition-colors">
                         <i class="fas fa-users-cog"></i>

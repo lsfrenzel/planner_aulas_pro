@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil - Aula Planner Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
+    <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-calendar-alt text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-bold text-gray-800 dark:text-white">Aula Planner Pro</h1>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Meu Perfil</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="/" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2">
+                        <i class="fas fa-home"></i>
+                        <span class="hidden sm:inline">Inicio</span>
+                    </a>
+                    <a href="/dashboard" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2">
+                        <i class="fas fa-th-large"></i>
+                        <span class="hidden sm:inline">Dashboard</span>
+                    </a>
+                    <button onclick="toggleTheme()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <i class="fas fa-moon text-gray-600 dark:hidden"></i>
+                        <i class="fas fa-sun text-yellow-400 hidden dark:block"></i>
+                    </button>
+                    <div class="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-700">
+                        <span class="text-sm text-gray-600 dark:text-gray-300">{{ user.user_name }}</span>
+                        <a href="/logout" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Sair">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300{% elif category == 'success' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300{% else %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <i class="fas {% if category == 'error' %}fa-exclamation-circle{% elif category == 'success' %}fa-check-circle{% else %}fa-info-circle{% endif %}"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Meu Perfil</h2>
+            <p class="text-gray-500 dark:text-gray-400 mt-1">Gerencie suas informacoes pessoais</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1">
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 text-center">
+                    <div class="relative inline-block mb-4">
+                        {% if user_data.photo %}
+                        <img src="{{ url_for('static', filename='uploads/profiles/' + user_data.photo) }}" 
+                             alt="Foto de perfil" 
+                             class="w-32 h-32 rounded-full object-cover border-4 border-primary-500">
+                        {% else %}
+                        <div class="w-32 h-32 rounded-full bg-primary-500 flex items-center justify-center border-4 border-primary-600">
+                            <span class="text-4xl font-bold text-white">{{ user_data.name[0]|upper }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white">{{ user_data.name }}</h3>
+                    <p class="text-gray-500 dark:text-gray-400">{{ user_data.cargo or 'Cargo nao definido' }}</p>
+                    <p class="text-sm text-gray-400 dark:text-gray-500 mt-2">{{ user_data.email }}</p>
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {% if user_data.role == 'admin' %}bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300{% else %}bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300{% endif %}">
+                            <i class="fas {% if user_data.role == 'admin' %}fa-crown{% else %}fa-user{% endif %} mr-1"></i>
+                            {% if user_data.role == 'admin' %}Administrador{% else %}Usuario{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                        <i class="fas fa-user-edit text-primary-500"></i>
+                        Informacoes do Perfil
+                    </h4>
+                    <form action="{{ url_for('atualizar_perfil') }}" method="POST" enctype="multipart/form-data">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
+                                <input type="text" name="name" value="{{ user_data.name }}" 
+                                       class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white"
+                                       required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cargo</label>
+                                <input type="text" name="cargo" value="{{ user_data.cargo or '' }}" 
+                                       placeholder="Ex: Professor, Coordenador, Instrutor..."
+                                       class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white placeholder-gray-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Foto de Perfil</label>
+                                <div class="flex items-center gap-4">
+                                    <input type="file" name="photo" accept="image/*" id="photoInput"
+                                           class="hidden">
+                                    <label for="photoInput" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2">
+                                        <i class="fas fa-camera"></i>
+                                        Escolher foto
+                                    </label>
+                                    <span id="fileName" class="text-sm text-gray-500 dark:text-gray-400">Nenhum arquivo selecionado</span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">Formatos aceitos: PNG, JPG, JPEG, GIF, WEBP</p>
+                            </div>
+                            <div class="pt-4">
+                                <button type="submit" class="w-full px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2">
+                                    <i class="fas fa-save"></i>
+                                    Salvar Alteracoes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                        <i class="fas fa-lock text-orange-500"></i>
+                        Alterar Senha
+                    </h4>
+                    <form action="{{ url_for('alterar_senha') }}" method="POST">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha Atual</label>
+                                <div class="relative">
+                                    <input type="password" name="senha_atual" id="senhaAtual"
+                                           class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white pr-10"
+                                           required autocomplete="current-password">
+                                    <button type="button" onclick="togglePassword('senhaAtual')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nova Senha</label>
+                                <div class="relative">
+                                    <input type="password" name="nova_senha" id="novaSenha"
+                                           class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white pr-10"
+                                           required minlength="6" autocomplete="new-password">
+                                    <button type="button" onclick="togglePassword('novaSenha')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">Minimo de 6 caracteres</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirmar Nova Senha</label>
+                                <div class="relative">
+                                    <input type="password" name="confirmar_senha" id="confirmarSenha"
+                                           class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white pr-10"
+                                           required minlength="6" autocomplete="new-password">
+                                    <button type="button" onclick="togglePassword('confirmarSenha')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="pt-4">
+                                <button type="submit" class="w-full px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2">
+                                    <i class="fas fa-key"></i>
+                                    Alterar Senha
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        }
+
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'Nenhum arquivo selecionado';
+            document.getElementById('fileName').textContent = fileName;
+        });
+
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const icon = input.nextElementSibling.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.add('fa-eye');
+                icon.classList.remove('fa-eye-slash');
+            }
+        }
+    </script>
+</body>
+</html>

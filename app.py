@@ -42,6 +42,9 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 db.init_app(app)
 
+UPLOAD_FOLDER = os.path.join('static', 'uploads', 'profiles')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 DATA_FILE = "data/weeks.json"
 
 
@@ -116,6 +119,8 @@ def run_migrations():
         ("turmas", "horario_fim", "ALTER TABLE turmas ADD COLUMN horario_fim VARCHAR(10)"),
         ("turmas", "data_inicio", "ALTER TABLE turmas ADD COLUMN data_inicio DATE"),
         ("turmas", "data_fim", "ALTER TABLE turmas ADD COLUMN data_fim DATE"),
+        ("users", "cargo", "ALTER TABLE users ADD COLUMN cargo VARCHAR(100) DEFAULT ''"),
+        ("users", "photo", "ALTER TABLE users ADD COLUMN photo VARCHAR(255) DEFAULT ''"),
     ]
     
     for table, column, sql in migrations:
@@ -247,6 +252,92 @@ def admin_panel():
 @login_required
 def turmas_page():
     return render_template("turmas.html", user=session)
+
+
+@app.route("/perfil")
+@login_required
+def perfil_page():
+    from models import User
+    user = User.query.get(session['user_id'])
+    return render_template("perfil.html", user=session, user_data=user)
+
+
+@app.route("/perfil/atualizar", methods=["POST"])
+@login_required
+def atualizar_perfil():
+    from models import User
+    import uuid
+    from werkzeug.utils import secure_filename
+    
+    user = User.query.get(session['user_id'])
+    if not user:
+        flash("Usuario nao encontrado.", "error")
+        return redirect(url_for('perfil_page'))
+    
+    name = request.form.get("name", "").strip()
+    cargo = request.form.get("cargo", "").strip()
+    
+    if name:
+        user.name = name
+        session['user_name'] = name
+    
+    user.cargo = cargo
+    
+    if 'photo' in request.files:
+        photo = request.files['photo']
+        if photo and photo.filename:
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            ext = photo.filename.rsplit('.', 1)[-1].lower() if '.' in photo.filename else ''
+            if ext in allowed_extensions:
+                filename = f"{user.id}_{uuid.uuid4().hex[:8]}.{ext}"
+                filepath = os.path.join('static', 'uploads', 'profiles', filename)
+                photo.save(filepath)
+                if user.photo and os.path.exists(os.path.join('static', 'uploads', 'profiles', user.photo)):
+                    try:
+                        os.remove(os.path.join('static', 'uploads', 'profiles', user.photo))
+                    except:
+                        pass
+                user.photo = filename
+            else:
+                flash("Formato de imagem nao permitido. Use PNG, JPG, JPEG, GIF ou WEBP.", "error")
+                return redirect(url_for('perfil_page'))
+    
+    db.session.commit()
+    flash("Perfil atualizado com sucesso!", "success")
+    return redirect(url_for('perfil_page'))
+
+
+@app.route("/perfil/alterar-senha", methods=["POST"])
+@login_required
+def alterar_senha():
+    from models import User
+    
+    user = User.query.get(session['user_id'])
+    if not user:
+        flash("Usuario nao encontrado.", "error")
+        return redirect(url_for('perfil_page'))
+    
+    senha_atual = request.form.get("senha_atual", "")
+    nova_senha = request.form.get("nova_senha", "")
+    confirmar_senha = request.form.get("confirmar_senha", "")
+    
+    if not check_password_hash(user.password_hash, senha_atual):
+        flash("Senha atual incorreta.", "error")
+        return redirect(url_for('perfil_page'))
+    
+    if len(nova_senha) < 6:
+        flash("A nova senha deve ter pelo menos 6 caracteres.", "error")
+        return redirect(url_for('perfil_page'))
+    
+    if nova_senha != confirmar_senha:
+        flash("As senhas nao conferem.", "error")
+        return redirect(url_for('perfil_page'))
+    
+    user.password_hash = generate_password_hash(nova_senha)
+    db.session.commit()
+    
+    flash("Senha alterada com sucesso!", "success")
+    return redirect(url_for('perfil_page'))
 
 
 @app.route("/api/turmas", methods=["GET"])
