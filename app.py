@@ -14,8 +14,9 @@ from io import BytesIO
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 
-DATA_FILE = "data/weeks.json"
 USERS_DB = "data/users.db"
+
+DATA_FILE = "data/weeks.json"
 
 def init_db():
     os.makedirs(os.path.dirname(USERS_DB), exist_ok=True)
@@ -32,6 +33,20 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            semana INTEGER NOT NULL,
+            atividades TEXT DEFAULT '',
+            unidade_curricular TEXT DEFAULT '',
+            capacidades TEXT DEFAULT '',
+            conhecimentos TEXT DEFAULT '',
+            recursos TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
     cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
     if cursor.fetchone()[0] == 0:
         admin_password = generate_password_hash("admin123")
@@ -40,6 +55,24 @@ def init_db():
             ("Administrador", "admin@aula.com", admin_password, "admin")
         )
     conn.commit()
+    
+    cursor.execute("SELECT COUNT(*) FROM schedules")
+    schedule_count = cursor.fetchone()[0]
+    if schedule_count == 0 and os.path.exists(DATA_FILE):
+        cursor.execute("SELECT id FROM users WHERE role = 'admin' LIMIT 1")
+        admin_row = cursor.fetchone()
+        if admin_row:
+            admin_id = admin_row[0]
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                weeks = json.load(f)
+            for week in weeks:
+                cursor.execute(
+                    "INSERT INTO schedules (user_id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (admin_id, week.get("semana", 0), week.get("atividades", ""), 
+                     week.get("unidadeCurricular", ""), week.get("capacidades", ""),
+                     week.get("conhecimentos", ""), week.get("recursos", ""))
+                )
+            conn.commit()
     conn.close()
 
 def get_db():
@@ -72,16 +105,16 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def load_weeks():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return []
-
-def save_weeks(weeks):
-    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(weeks, f, ensure_ascii=False, indent=2)
+def load_weeks_for_user(user_id):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos FROM schedules WHERE user_id = ? ORDER BY semana",
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    return [{"id": r["id"], "semana": r["semana"], "atividades": r["atividades"], 
+             "unidadeCurricular": r["unidade_curricular"], "capacidades": r["capacidades"],
+             "conhecimentos": r["conhecimentos"], "recursos": r["recursos"]} for r in rows]
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -234,84 +267,113 @@ def delete_user(user_id):
 @app.route("/api/weeks", methods=["GET"])
 @login_required
 def get_weeks():
-    weeks = load_weeks()
+    user_id = session['user_id']
+    weeks = load_weeks_for_user(user_id)
     return jsonify(weeks)
 
 @app.route("/api/weeks/<int:week_id>", methods=["GET"])
 @login_required
 def get_week(week_id):
-    weeks = load_weeks()
-    for week in weeks:
-        if week["semana"] == week_id:
-            return jsonify(week)
+    user_id = session['user_id']
+    conn = get_db()
+    row = conn.execute(
+        "SELECT id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos FROM schedules WHERE user_id = ? AND semana = ?",
+        (user_id, week_id)
+    ).fetchone()
+    conn.close()
+    if row:
+        return jsonify({"id": row["id"], "semana": row["semana"], "atividades": row["atividades"],
+                        "unidadeCurricular": row["unidade_curricular"], "capacidades": row["capacidades"],
+                        "conhecimentos": row["conhecimentos"], "recursos": row["recursos"]})
     return jsonify({"error": "Semana não encontrada"}), 404
 
 @app.route("/api/weeks", methods=["POST"])
 @login_required
 def add_week():
-    weeks = load_weeks()
+    user_id = session['user_id']
     data = request.get_json()
     
     if not data:
         return jsonify({"error": "Dados inválidos"}), 400
     
-    max_semana = max([w["semana"] for w in weeks], default=0)
-    new_week = {
-        "semana": data.get("semana", max_semana + 1),
-        "atividades": data.get("atividades", ""),
-        "unidadeCurricular": data.get("unidadeCurricular", ""),
-        "capacidades": data.get("capacidades", ""),
-        "conhecimentos": data.get("conhecimentos", ""),
-        "recursos": data.get("recursos", "")
-    }
+    conn = get_db()
+    max_row = conn.execute("SELECT MAX(semana) as max_semana FROM schedules WHERE user_id = ?", (user_id,)).fetchone()
+    max_semana = max_row["max_semana"] if max_row["max_semana"] else 0
     
-    weeks.append(new_week)
-    weeks.sort(key=lambda x: x["semana"])
-    save_weeks(weeks)
+    semana = data.get("semana", max_semana + 1)
+    atividades = data.get("atividades", "")
+    unidade_curricular = data.get("unidadeCurricular", "")
+    capacidades = data.get("capacidades", "")
+    conhecimentos = data.get("conhecimentos", "")
+    recursos = data.get("recursos", "")
     
-    return jsonify(new_week), 201
+    cursor = conn.execute(
+        "INSERT INTO schedules (user_id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (user_id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos)
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    
+    return jsonify({"id": new_id, "semana": semana, "atividades": atividades, 
+                    "unidadeCurricular": unidade_curricular, "capacidades": capacidades,
+                    "conhecimentos": conhecimentos, "recursos": recursos}), 201
 
 @app.route("/api/weeks/<int:week_id>", methods=["PUT"])
 @login_required
 def update_week(week_id):
-    weeks = load_weeks()
+    user_id = session['user_id']
     data = request.get_json()
     
     if not data:
         return jsonify({"error": "Dados inválidos"}), 400
     
-    for i, week in enumerate(weeks):
-        if week["semana"] == week_id:
-            weeks[i] = {
-                "semana": week_id,
-                "atividades": data.get("atividades", week["atividades"]),
-                "unidadeCurricular": data.get("unidadeCurricular", week["unidadeCurricular"]),
-                "capacidades": data.get("capacidades", week["capacidades"]),
-                "conhecimentos": data.get("conhecimentos", week["conhecimentos"]),
-                "recursos": data.get("recursos", week["recursos"])
-            }
-            save_weeks(weeks)
-            return jsonify(weeks[i])
+    conn = get_db()
+    row = conn.execute("SELECT * FROM schedules WHERE user_id = ? AND semana = ?", (user_id, week_id)).fetchone()
     
-    return jsonify({"error": "Semana não encontrada"}), 404
+    if not row:
+        conn.close()
+        return jsonify({"error": "Semana não encontrada"}), 404
+    
+    atividades = data.get("atividades", row["atividades"])
+    unidade_curricular = data.get("unidadeCurricular", row["unidade_curricular"])
+    capacidades = data.get("capacidades", row["capacidades"])
+    conhecimentos = data.get("conhecimentos", row["conhecimentos"])
+    recursos = data.get("recursos", row["recursos"])
+    
+    conn.execute(
+        "UPDATE schedules SET atividades = ?, unidade_curricular = ?, capacidades = ?, conhecimentos = ?, recursos = ? WHERE user_id = ? AND semana = ?",
+        (atividades, unidade_curricular, capacidades, conhecimentos, recursos, user_id, week_id)
+    )
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"id": row["id"], "semana": week_id, "atividades": atividades,
+                    "unidadeCurricular": unidade_curricular, "capacidades": capacidades,
+                    "conhecimentos": conhecimentos, "recursos": recursos})
 
 @app.route("/api/weeks/<int:week_id>", methods=["DELETE"])
 @login_required
 def delete_week(week_id):
-    weeks = load_weeks()
+    user_id = session['user_id']
+    conn = get_db()
+    row = conn.execute("SELECT * FROM schedules WHERE user_id = ? AND semana = ?", (user_id, week_id)).fetchone()
     
-    for i, week in enumerate(weeks):
-        if week["semana"] == week_id:
-            deleted = weeks.pop(i)
-            save_weeks(weeks)
-            return jsonify({"message": "Semana excluída com sucesso", "deleted": deleted})
+    if not row:
+        conn.close()
+        return jsonify({"error": "Semana não encontrada"}), 404
     
-    return jsonify({"error": "Semana não encontrada"}), 404
+    conn.execute("DELETE FROM schedules WHERE user_id = ? AND semana = ?", (user_id, week_id))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"message": "Semana excluída com sucesso"})
 
 @app.route("/api/export/json")
 @login_required
 def export_json():
-    weeks = load_weeks()
+    user_id = session['user_id']
+    weeks = load_weeks_for_user(user_id)
     response = Response(
         json.dumps(weeks, ensure_ascii=False, indent=2),
         mimetype="application/json",
@@ -322,7 +384,8 @@ def export_json():
 @app.route("/api/export/pdf")
 @login_required
 def export_pdf():
-    weeks = load_weeks()
+    user_id = session['user_id']
+    weeks = load_weeks_for_user(user_id)
     
     buffer = BytesIO()
     doc = SimpleDocTemplate(
