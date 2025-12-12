@@ -38,13 +38,17 @@ class Turma(db.Model):
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    schedules = db.relationship('Schedule', backref='turma', lazy=True)
+    
     def to_dict(self):
+        schedule_count = len([s for s in self.schedules if s]) if self.schedules else 0
         return {
             'id': self.id,
             'nome': self.nome,
             'descricao': self.descricao,
             'cor': self.cor,
             'active': self.active,
+            'schedule_count': schedule_count,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -54,7 +58,7 @@ class Schedule(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    turma_id = db.Column(db.Integer, nullable=True)
+    turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id'), nullable=True)
     semana = db.Column(db.Integer, nullable=False)
     atividades = db.Column(db.Text, default='')
     unidade_curricular = db.Column(db.String(200), default='')
@@ -65,18 +69,11 @@ class Schedule(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):
-        turma_nome = None
-        if self.turma_id:
-            try:
-                turma = Turma.query.get(self.turma_id)
-                if turma:
-                    turma_nome = turma.nome
-            except Exception:
-                pass
         return {
             'id': self.id,
             'turma_id': self.turma_id,
-            'turma_nome': turma_nome,
+            'turma_nome': self.turma.nome if self.turma else None,
+            'turma_cor': self.turma.cor if self.turma else None,
             'semana': self.semana,
             'atividades': self.atividades,
             'unidadeCurricular': self.unidade_curricular,

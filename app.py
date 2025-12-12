@@ -46,7 +46,7 @@ DATA_FILE = "data/weeks.json"
 
 
 def init_data():
-    from models import User, Schedule
+    from models import User, Schedule, Turma
     
     admin = User.query.filter_by(role='admin').first()
     if not admin:
@@ -60,12 +60,23 @@ def init_data():
         db.session.add(admin)
         db.session.commit()
         
+        default_turma = Turma(
+            user_id=admin.id,
+            nome="Tecnico em Programacao de Jogos Digitais",
+            descricao="Curso tecnico de desenvolvimento de jogos digitais",
+            cor="blue",
+            active=True
+        )
+        db.session.add(default_turma)
+        db.session.commit()
+        
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 weeks = json.load(f)
             for week in weeks:
                 schedule = Schedule(
                     user_id=admin.id,
+                    turma_id=default_turma.id,
                     semana=week.get("semana", 0),
                     atividades=week.get("atividades", ""),
                     unidade_curricular=week.get("unidadeCurricular", ""),
@@ -74,6 +85,23 @@ def init_data():
                     recursos=week.get("recursos", "")
                 )
                 db.session.add(schedule)
+            db.session.commit()
+    else:
+        default_turma = Turma.query.filter_by(user_id=admin.id, nome="Tecnico em Programacao de Jogos Digitais").first()
+        if not default_turma:
+            default_turma = Turma(
+                user_id=admin.id,
+                nome="Tecnico em Programacao de Jogos Digitais",
+                descricao="Curso tecnico de desenvolvimento de jogos digitais",
+                cor="blue",
+                active=True
+            )
+            db.session.add(default_turma)
+            db.session.commit()
+            
+            orphan_schedules = Schedule.query.filter_by(user_id=admin.id, turma_id=None).all()
+            for schedule in orphan_schedules:
+                schedule.turma_id = default_turma.id
             db.session.commit()
 
 
@@ -384,7 +412,13 @@ def get_weeks():
     from models import Schedule
     
     user_id = session['user_id']
-    schedules = Schedule.query.filter_by(user_id=user_id).order_by(Schedule.semana).all()
+    turma_id = request.args.get('turma_id', type=int)
+    
+    query = Schedule.query.filter_by(user_id=user_id)
+    if turma_id:
+        query = query.filter_by(turma_id=turma_id)
+    
+    schedules = query.order_by(Schedule.semana).all()
     return jsonify([s.to_dict() for s in schedules])
 
 
@@ -404,7 +438,7 @@ def get_week(week_id):
 @app.route("/api/weeks", methods=["POST"])
 @login_required
 def add_week():
-    from models import Schedule
+    from models import Schedule, Turma
     
     user_id = session['user_id']
     data = request.get_json()
@@ -412,10 +446,19 @@ def add_week():
     if not data:
         return jsonify({"error": "Dados invalidos"}), 400
     
-    max_semana = db.session.query(db.func.max(Schedule.semana)).filter_by(user_id=user_id).scalar() or 0
+    turma_id = data.get("turma_id")
+    if not turma_id:
+        return jsonify({"error": "Turma e obrigatoria. Selecione uma turma antes de adicionar semanas."}), 400
+    
+    turma = Turma.query.filter_by(id=turma_id, user_id=user_id, active=True).first()
+    if not turma:
+        return jsonify({"error": "Turma nao encontrada"}), 404
+    
+    max_semana = db.session.query(db.func.max(Schedule.semana)).filter_by(user_id=user_id, turma_id=turma_id).scalar() or 0
     
     schedule = Schedule(
         user_id=user_id,
+        turma_id=turma_id,
         semana=data.get("semana", max_semana + 1),
         atividades=data.get("atividades", ""),
         unidade_curricular=data.get("unidadeCurricular", ""),
@@ -493,6 +536,8 @@ def toggle_week_complete(week_id):
 
 @app.route("/api/migrate")
 def run_migration():
+    from models import User, Schedule, Turma
+    
     try:
         db.session.execute(db.text("""
             CREATE TABLE IF NOT EXISTS turmas (
@@ -506,9 +551,30 @@ def run_migration():
             );
         """))
         db.session.execute(db.text("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE;"))
-        db.session.execute(db.text("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS turma_id INTEGER REFERENCES turmas(id) ON DELETE CASCADE;"))
+        db.session.execute(db.text("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS turma_id INTEGER REFERENCES turmas(id) ON DELETE SET NULL;"))
         db.session.commit()
-        return jsonify({"success": True, "message": "Migracao executada com sucesso!"})
+        
+        users = User.query.all()
+        for user in users:
+            orphan_schedules = Schedule.query.filter_by(user_id=user.id, turma_id=None).all()
+            if orphan_schedules:
+                default_turma = Turma.query.filter_by(user_id=user.id).first()
+                if not default_turma:
+                    default_turma = Turma(
+                        user_id=user.id,
+                        nome="Tecnico em Programacao de Jogos Digitais",
+                        descricao="Turma padrao criada automaticamente",
+                        cor="blue",
+                        active=True
+                    )
+                    db.session.add(default_turma)
+                    db.session.commit()
+                
+                for schedule in orphan_schedules:
+                    schedule.turma_id = default_turma.id
+                db.session.commit()
+        
+        return jsonify({"success": True, "message": "Migracao executada com sucesso! Schedules orfaos associados a turma padrao."})
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
