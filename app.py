@@ -293,27 +293,39 @@ def atualizar_perfil():
     
     user.cargo = cargo
     
+    upload_folder = os.path.join('static', 'uploads', 'profiles')
+    os.makedirs(upload_folder, exist_ok=True)
+    
     if 'photo' in request.files:
         photo = request.files['photo']
-        if photo and photo.filename:
+        if photo and photo.filename and photo.filename.strip():
             allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
             ext = photo.filename.rsplit('.', 1)[-1].lower() if '.' in photo.filename else ''
             if ext in allowed_extensions:
                 filename = f"{user.id}_{uuid.uuid4().hex[:8]}.{ext}"
-                filepath = os.path.join('static', 'uploads', 'profiles', filename)
+                filepath = os.path.join(upload_folder, filename)
                 photo.save(filepath)
-                if user.photo and os.path.exists(os.path.join('static', 'uploads', 'profiles', user.photo)):
-                    try:
-                        os.remove(os.path.join('static', 'uploads', 'profiles', user.photo))
-                    except:
-                        pass
+                old_photo = user.photo
+                if old_photo:
+                    old_photo_path = os.path.join(upload_folder, old_photo)
+                    if os.path.exists(old_photo_path):
+                        try:
+                            os.remove(old_photo_path)
+                        except:
+                            pass
                 user.photo = filename
+                db.session.add(user)
             else:
                 flash("Formato de imagem nao permitido. Use PNG, JPG, JPEG, GIF ou WEBP.", "error")
                 return redirect(url_for('perfil_page'))
     
-    db.session.commit()
-    flash("Perfil atualizado com sucesso!", "success")
+    try:
+        db.session.commit()
+        flash("Perfil atualizado com sucesso!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao salvar perfil: {str(e)}", "error")
+    
     return redirect(url_for('perfil_page'))
 
 
