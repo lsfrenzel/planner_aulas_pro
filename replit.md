@@ -33,6 +33,7 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - `DELETE /api/weeks/<id>` - Remove semana
 - `GET /api/export/json` - Exporta cronograma em JSON
 - `GET /api/export/pdf` - Exporta cronograma em PDF
+- `GET /api/export/xlsx` - Exporta cronograma em Excel (XLSX)
 
 #### Rotas de Perfil
 - `GET /perfil` - Pagina de edicao de perfil
@@ -64,7 +65,7 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - Tema claro/escuro com persistência
 - Filtros por Unidade Curricular e Recursos
 - Busca por texto
-- Exportação para JSON e PDF
+- Exportação para JSON, PDF e Excel (XLSX)
 - Interface responsiva
 - Sidebar navegável
 - Estatísticas (total semanas, unidades curriculares, recursos)
@@ -96,10 +97,13 @@ O projeto está configurado para deploy no Railway:
 - psycopg2-binary 2.9.11
 - gunicorn 23.0.0
 - ReportLab 4.4.6
+- openpyxl 3.1.5
 - Werkzeug 3.0.1
 - email-validator 2.3.0
 
 ## Recent Changes
+- 2025-12-12: Adicionada exportacao para Excel (XLSX) com formatacao profissional
+- 2025-12-12: Foto de perfil do usuario agora aparece no cabecalho ao lado do nome
 - 2025-12-12: Adicionada pagina de perfil com upload de foto, edicao de cargo e alteracao de senha
 - 2025-12-12: Novos campos no modelo User: cargo e photo
 - 2025-12-12: Links de perfil adicionados em todas as paginas

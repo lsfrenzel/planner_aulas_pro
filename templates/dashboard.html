@@ -73,15 +73,35 @@
                         <i class="fas fa-th-large"></i>
                         <span class="hidden sm:inline">Visualizar Cards</span>
                     </a>
-                    <a href="#" onclick="exportPDF()" class="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-2">
-                        <i class="fas fa-file-pdf"></i>
-                        <span class="hidden sm:inline">Exportar PDF</span>
-                    </a>
+                    <div class="relative">
+                        <button onclick="toggleExportMenu()" class="px-4 py-2 text-sm bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2">
+                            <i class="fas fa-download"></i>
+                            <span class="hidden sm:inline">Exportar</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+                            <a href="#" onclick="exportPDF()" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <i class="fas fa-file-pdf text-red-500"></i>
+                                Exportar PDF
+                            </a>
+                            <a href="#" onclick="exportXLSX()" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <i class="fas fa-file-excel text-green-500"></i>
+                                Exportar Excel
+                            </a>
+                        </div>
+                    </div>
                     <button onclick="toggleTheme()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                         <i class="fas fa-moon text-gray-600 dark:hidden"></i>
                         <i class="fas fa-sun text-yellow-400 hidden dark:block"></i>
                     </button>
                     <div class="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-700">
+                        {% if user_photo %}
+                        <img src="/static/uploads/profiles/{{ user_photo }}" alt="Foto de perfil" class="w-8 h-8 rounded-full object-cover border-2 border-primary-200">
+                        {% else %}
+                        <div class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-primary-500 text-sm"></i>
+                        </div>
+                        {% endif %}
                         <span class="text-sm text-gray-600 dark:text-gray-300">{{ user.user_name }}</span>
                         <a href="/perfil" class="p-2 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg" title="Meu Perfil">
                             <i class="fas fa-user-edit"></i>
@@ -480,6 +500,28 @@
             }
             window.location.href = url;
         }
+
+        function exportXLSX() {
+            const selectedTurma = document.getElementById('turmaFilter').value;
+            let url = '/api/export/xlsx';
+            if (selectedTurma) {
+                url += '?turma_id=' + selectedTurma;
+            }
+            window.location.href = url;
+        }
+
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('exportMenu');
+            const exportBtn = e.target.closest('button[onclick="toggleExportMenu()"]');
+            if (!exportBtn && !menu.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
 
         loadTurmas();
     </script>

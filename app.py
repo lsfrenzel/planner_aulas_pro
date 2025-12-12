@@ -213,13 +213,16 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    return render_template("index.html", user=session)
+    from models import User
+    user_data = User.query.get(session['user_id'])
+    user_photo = user_data.photo if user_data and user_data.photo else ''
+    return render_template("index.html", user=session, user_photo=user_photo)
 
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    from models import Schedule
+    from models import Schedule, User
     
     user_id = session['user_id']
     schedules = Schedule.query.filter_by(user_id=user_id).order_by(Schedule.semana).all()
@@ -235,11 +238,15 @@ def dashboard():
             for r in s.recursos.split(','):
                 recursos_set.add(r.strip())
     
+    user_data = User.query.get(user_id)
+    user_photo = user_data.photo if user_data and user_data.photo else ''
+    
     return render_template("dashboard.html", 
                           user=session, 
                           weeks=weeks,
                           unidades=list(unidades),
-                          recursos=list(recursos_set))
+                          recursos=list(recursos_set),
+                          user_photo=user_photo)
 
 
 @app.route("/admin")
@@ -251,7 +258,10 @@ def admin_panel():
 @app.route("/turmas")
 @login_required
 def turmas_page():
-    return render_template("turmas.html", user=session)
+    from models import User
+    user_data = User.query.get(session['user_id'])
+    user_photo = user_data.photo if user_data and user_data.photo else ''
+    return render_template("turmas.html", user=session, user_photo=user_photo)
 
 
 @app.route("/perfil")
@@ -936,6 +946,150 @@ def export_pdf():
     return send_file(
         buffer,
         mimetype='application/pdf',
+        as_attachment=True,
+        download_name=filename
+    )
+
+
+@app.route("/api/export/xlsx")
+@login_required
+def export_xlsx():
+    from models import Schedule, Turma
+    from datetime import datetime
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    
+    user_id = session['user_id']
+    turma_id = request.args.get('turma_id', type=int)
+    
+    query = Schedule.query.filter_by(user_id=user_id)
+    if turma_id:
+        query = query.filter_by(turma_id=turma_id)
+    
+    schedules = query.order_by(Schedule.semana).all()
+    weeks = [s.to_dict() for s in schedules]
+    
+    turma = None
+    if turma_id:
+        turma = Turma.query.filter_by(id=turma_id, user_id=user_id).first()
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cronograma"
+    
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    
+    cell_alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+    thin_border = Border(
+        left=Side(style='thin', color='E5E7EB'),
+        right=Side(style='thin', color='E5E7EB'),
+        top=Side(style='thin', color='E5E7EB'),
+        bottom=Side(style='thin', color='E5E7EB')
+    )
+    
+    current_row = 1
+    
+    if turma:
+        ws.merge_cells(f'A{current_row}:G{current_row}')
+        title_cell = ws.cell(row=current_row, column=1, value=f"Cronograma - {turma.nome}")
+        title_cell.font = Font(bold=True, size=16)
+        title_cell.alignment = Alignment(horizontal="center")
+        current_row += 1
+        
+        if turma.descricao:
+            ws.merge_cells(f'A{current_row}:G{current_row}')
+            desc_cell = ws.cell(row=current_row, column=1, value=turma.descricao)
+            desc_cell.alignment = Alignment(horizontal="center")
+            current_row += 1
+        
+        info_parts = []
+        if turma.carga_horaria:
+            info_parts.append(f"Carga Horaria: {turma.carga_horaria}h")
+        if turma.dias_aula:
+            info_parts.append(f"Dias de Aula: {turma.dias_aula}")
+        if turma.horario_inicio and turma.horario_fim:
+            info_parts.append(f"Horario: {turma.horario_inicio} - {turma.horario_fim}")
+        if turma.data_inicio or turma.data_fim:
+            data_inicio_str = turma.data_inicio.strftime('%d/%m/%Y') if turma.data_inicio else '-'
+            data_fim_str = turma.data_fim.strftime('%d/%m/%Y') if turma.data_fim else '-'
+            info_parts.append(f"Periodo: {data_inicio_str} a {data_fim_str}")
+        
+        if info_parts:
+            ws.merge_cells(f'A{current_row}:G{current_row}')
+            info_cell = ws.cell(row=current_row, column=1, value=" | ".join(info_parts))
+            info_cell.alignment = Alignment(horizontal="center")
+            current_row += 1
+        
+        current_row += 1
+    else:
+        ws.merge_cells(f'A{current_row}:G{current_row}')
+        title_cell = ws.cell(row=current_row, column=1, value="Aula Planner Pro - Cronograma Completo")
+        title_cell.font = Font(bold=True, size=16)
+        title_cell.alignment = Alignment(horizontal="center")
+        current_row += 2
+    
+    if turma_id:
+        headers = ["Semana", "Atividades", "Unidade Curricular", "Capacidades", "Conhecimentos", "Recursos"]
+    else:
+        headers = ["Semana", "Turma", "Atividades", "Unidade Curricular", "Capacidades", "Conhecimentos", "Recursos"]
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=current_row, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+    
+    current_row += 1
+    
+    for week in weeks:
+        if turma_id:
+            row_data = [
+                week["semana"],
+                week["atividades"],
+                week["unidadeCurricular"],
+                week["capacidades"],
+                week["conhecimentos"],
+                week["recursos"]
+            ]
+        else:
+            row_data = [
+                week["semana"],
+                week.get("turma_nome", ""),
+                week["atividades"],
+                week["unidadeCurricular"],
+                week["capacidades"],
+                week["conhecimentos"],
+                week["recursos"]
+            ]
+        
+        for col, value in enumerate(row_data, 1):
+            cell = ws.cell(row=current_row, column=col, value=value)
+            cell.alignment = cell_alignment
+            cell.border = thin_border
+        
+        current_row += 1
+    
+    if turma_id:
+        col_widths = [10, 40, 25, 35, 30, 25]
+    else:
+        col_widths = [10, 20, 35, 22, 30, 25, 22]
+    
+    for i, width in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = width
+    
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    filename = f"cronograma_{turma.nome.replace(' ', '_')}.xlsx" if turma else "cronograma.xlsx"
+    
+    return send_file(
+        buffer,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
         download_name=filename
     )
