@@ -102,6 +102,9 @@ O projeto está configurado para deploy no Railway:
 - email-validator 2.3.0
 
 ## Recent Changes
+- 2025-12-12: Adicionadas barras de progresso no dashboard para cada turma (semanas e capacidades)
+- 2025-12-12: Nova API /api/turmas/progress para calcular estatisticas de progresso por turma
+- 2025-12-12: Barras de progresso atualizam em tempo real ao marcar semanas/capacidades como concluidas
 - 2025-12-12: Adicionada exportacao para Excel (XLSX) com formatacao profissional
 - 2025-12-12: Foto de perfil do usuario agora aparece no cabecalho ao lado do nome
 - 2025-12-12: Adicionada pagina de perfil com upload de foto, edicao de cargo e alteracao de senha
