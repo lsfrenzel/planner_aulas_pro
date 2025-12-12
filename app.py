@@ -920,6 +920,31 @@ def export_pdf():
     if turma_id:
         turma = Turma.query.filter_by(id=turma_id, user_id=user_id).first()
     
+    all_capacidades_desenvolvidas = []
+    total_capacidades = 0
+    total_completed = 0
+    completed_weeks = 0
+    
+    for week in weeks:
+        if week.get('completed'):
+            completed_weeks += 1
+        
+        caps = [c.strip() for c in week.get('capacidades', '').split('\n') if c.strip()]
+        completed_list = week.get('capacidades_completed', '').split(',') if week.get('capacidades_completed') else []
+        completed_list = [x for x in completed_list if x]
+        
+        total_capacidades += len(caps)
+        total_completed += len(completed_list)
+        
+        for idx, cap in enumerate(caps):
+            is_completed = str(idx) in completed_list
+            if is_completed:
+                all_capacidades_desenvolvidas.append({
+                    'semana': week['semana'],
+                    'capacidade': cap,
+                    'unidade': week.get('unidadeCurricular', '')
+                })
+    
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -965,6 +990,23 @@ def export_pdf():
         leading=9
     )
     
+    cell_completed_style = ParagraphStyle(
+        'CellCompletedStyle',
+        parent=styles['Normal'],
+        fontSize=7,
+        leading=9,
+        textColor=colors.HexColor('#059669')
+    )
+    
+    section_title_style = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceBefore=20,
+        spaceAfter=10,
+        textColor=colors.HexColor('#059669')
+    )
+    
     if turma:
         elements.append(Paragraph(f"Cronograma - {turma.nome}", title_style))
         if turma.descricao:
@@ -989,46 +1031,71 @@ def export_pdf():
         if info_items:
             info_text = " &nbsp;&nbsp;|&nbsp;&nbsp; ".join(info_items)
             elements.append(Paragraph(info_text, info_style))
-            elements.append(Spacer(1, 15))
+            elements.append(Spacer(1, 10))
     else:
         elements.append(Paragraph("Aula Planner Pro - Cronograma Completo", title_style))
         elements.append(Spacer(1, 10))
     
-    headers = ["Semana", "Atividades", "Unidade Curricular", "Capacidades", "Conhecimentos", "Recursos"]
+    progress_percent_weeks = round((completed_weeks / len(weeks) * 100) if len(weeks) > 0 else 0)
+    progress_percent_caps = round((total_completed / total_capacidades * 100) if total_capacidades > 0 else 0)
+    
+    progress_text = f"<b>Progresso:</b> {completed_weeks}/{len(weeks)} semanas concluidas ({progress_percent_weeks}%) | {total_completed}/{total_capacidades} capacidades desenvolvidas ({progress_percent_caps}%)"
+    elements.append(Paragraph(progress_text, info_style))
+    elements.append(Spacer(1, 15))
+    
+    headers = ["Status", "Semana", "Atividades", "Unidade Curricular", "Capacidades", "Conhecimentos", "Recursos"]
     
     if not turma_id:
-        headers.insert(1, "Turma")
+        headers.insert(2, "Turma")
     
     data = [headers]
     for week in weeks:
+        status = "Concluida" if week.get('completed') else "Pendente"
+        
+        caps = [c.strip() for c in week.get('capacidades', '').split('\n') if c.strip()]
+        completed_list = week.get('capacidades_completed', '').split(',') if week.get('capacidades_completed') else []
+        completed_list = [x for x in completed_list if x]
+        
+        capacidades_formatted = []
+        for idx, cap in enumerate(caps):
+            if str(idx) in completed_list:
+                capacidades_formatted.append(f"[OK] {cap}")
+            else:
+                capacidades_formatted.append(f"[ ] {cap}")
+        
+        capacidades_text = "\n".join(capacidades_formatted) if capacidades_formatted else week.get('capacidades', '')
+        
         if turma_id:
             row = [
+                status,
                 str(week["semana"]),
                 Paragraph(week["atividades"], cell_style),
                 Paragraph(week["unidadeCurricular"], cell_style),
-                Paragraph(week["capacidades"], cell_style),
+                Paragraph(capacidades_text.replace('\n', '<br/>'), cell_completed_style if week.get('completed') else cell_style),
                 Paragraph(week["conhecimentos"], cell_style),
                 Paragraph(week["recursos"], cell_style)
             ]
         else:
             row = [
+                status,
                 str(week["semana"]),
                 Paragraph(week.get("turma_nome", ""), cell_style),
                 Paragraph(week["atividades"], cell_style),
                 Paragraph(week["unidadeCurricular"], cell_style),
-                Paragraph(week["capacidades"], cell_style),
+                Paragraph(capacidades_text.replace('\n', '<br/>'), cell_completed_style if week.get('completed') else cell_style),
                 Paragraph(week["conhecimentos"], cell_style),
                 Paragraph(week["recursos"], cell_style)
             ]
         data.append(row)
     
     if turma_id:
-        col_widths = [1.2*cm, 5*cm, 4*cm, 5*cm, 4.5*cm, 4*cm]
+        col_widths = [1.5*cm, 1.2*cm, 4.5*cm, 3.5*cm, 5.5*cm, 4*cm, 3.5*cm]
     else:
-        col_widths = [1*cm, 3*cm, 4.5*cm, 3.5*cm, 4.5*cm, 4*cm, 3.5*cm]
+        col_widths = [1.3*cm, 1*cm, 2.5*cm, 4*cm, 3*cm, 5*cm, 3.5*cm, 3*cm]
     
     table = Table(data, colWidths=col_widths, repeatRows=1)
-    table.setStyle(TableStyle([
+    
+    table_style = [
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3B82F6')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -1039,14 +1106,60 @@ def export_pdf():
         ('TOPPADDING', (0, 0), (-1, 0), 8),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9FAFB')]),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
         ('TOPPADDING', (0, 1), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-    ]))
+    ]
     
+    for idx, week in enumerate(weeks, 1):
+        if week.get('completed'):
+            table_style.append(('BACKGROUND', (0, idx), (-1, idx), colors.HexColor('#D1FAE5')))
+            table_style.append(('TEXTCOLOR', (0, idx), (0, idx), colors.HexColor('#059669')))
+    
+    table.setStyle(TableStyle(table_style))
     elements.append(table)
+    
+    if all_capacidades_desenvolvidas:
+        elements.append(Spacer(1, 30))
+        elements.append(Paragraph("Capacidades Desenvolvidas", section_title_style))
+        elements.append(Spacer(1, 10))
+        
+        summary_info = f"Total de {len(all_capacidades_desenvolvidas)} capacidades desenvolvidas ao longo do curso."
+        elements.append(Paragraph(summary_info, info_style))
+        elements.append(Spacer(1, 10))
+        
+        caps_headers = ["Semana", "Unidade Curricular", "Capacidade Desenvolvida"]
+        caps_data = [caps_headers]
+        
+        for cap_info in all_capacidades_desenvolvidas:
+            caps_data.append([
+                str(cap_info['semana']),
+                Paragraph(cap_info['unidade'], cell_style),
+                Paragraph(cap_info['capacidade'], cell_style)
+            ])
+        
+        caps_col_widths = [2*cm, 6*cm, 18*cm]
+        caps_table = Table(caps_data, colWidths=caps_col_widths, repeatRows=1)
+        caps_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#059669')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('TOPPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#ECFDF5')]),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 1), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ]))
+        elements.append(caps_table)
     
     doc.build(elements)
     buffer.seek(0)
@@ -1084,6 +1197,31 @@ def export_xlsx():
     if turma_id:
         turma = Turma.query.filter_by(id=turma_id, user_id=user_id).first()
     
+    all_capacidades_desenvolvidas = []
+    total_capacidades = 0
+    total_completed = 0
+    completed_weeks = 0
+    
+    for week in weeks:
+        if week.get('completed'):
+            completed_weeks += 1
+        
+        caps = [c.strip() for c in week.get('capacidades', '').split('\n') if c.strip()]
+        completed_list = week.get('capacidades_completed', '').split(',') if week.get('capacidades_completed') else []
+        completed_list = [x for x in completed_list if x]
+        
+        total_capacidades += len(caps)
+        total_completed += len(completed_list)
+        
+        for idx, cap in enumerate(caps):
+            is_completed = str(idx) in completed_list
+            if is_completed:
+                all_capacidades_desenvolvidas.append({
+                    'semana': week['semana'],
+                    'capacidade': cap,
+                    'unidade': week.get('unidadeCurricular', '')
+                })
+    
     wb = Workbook()
     ws = wb.active
     ws.title = "Cronograma"
@@ -1093,6 +1231,7 @@ def export_xlsx():
     header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     
     cell_alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+    center_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     thin_border = Border(
         left=Side(style='thin', color='E5E7EB'),
         right=Side(style='thin', color='E5E7EB'),
@@ -1100,17 +1239,21 @@ def export_xlsx():
         bottom=Side(style='thin', color='E5E7EB')
     )
     
+    completed_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
+    completed_font = Font(color="059669")
+    green_header_fill = PatternFill(start_color="059669", end_color="059669", fill_type="solid")
+    
     current_row = 1
     
     if turma:
-        ws.merge_cells(f'A{current_row}:G{current_row}')
+        ws.merge_cells(f'A{current_row}:H{current_row}')
         title_cell = ws.cell(row=current_row, column=1, value=f"Cronograma - {turma.nome}")
         title_cell.font = Font(bold=True, size=16)
         title_cell.alignment = Alignment(horizontal="center")
         current_row += 1
         
         if turma.descricao:
-            ws.merge_cells(f'A{current_row}:G{current_row}')
+            ws.merge_cells(f'A{current_row}:H{current_row}')
             desc_cell = ws.cell(row=current_row, column=1, value=turma.descricao)
             desc_cell.alignment = Alignment(horizontal="center")
             current_row += 1
@@ -1128,24 +1271,35 @@ def export_xlsx():
             info_parts.append(f"Periodo: {data_inicio_str} a {data_fim_str}")
         
         if info_parts:
-            ws.merge_cells(f'A{current_row}:G{current_row}')
+            ws.merge_cells(f'A{current_row}:H{current_row}')
             info_cell = ws.cell(row=current_row, column=1, value=" | ".join(info_parts))
             info_cell.alignment = Alignment(horizontal="center")
             current_row += 1
         
         current_row += 1
     else:
-        ws.merge_cells(f'A{current_row}:G{current_row}')
+        ws.merge_cells(f'A{current_row}:H{current_row}')
         title_cell = ws.cell(row=current_row, column=1, value="Aula Planner Pro - Cronograma Completo")
         title_cell.font = Font(bold=True, size=16)
         title_cell.alignment = Alignment(horizontal="center")
         current_row += 2
     
-    if turma_id:
-        headers = ["Semana", "Atividades", "Unidade Curricular", "Capacidades", "Conhecimentos", "Recursos"]
-    else:
-        headers = ["Semana", "Turma", "Atividades", "Unidade Curricular", "Capacidades", "Conhecimentos", "Recursos"]
+    progress_percent_weeks = round((completed_weeks / len(weeks) * 100) if len(weeks) > 0 else 0)
+    progress_percent_caps = round((total_completed / total_capacidades * 100) if total_capacidades > 0 else 0)
     
+    ws.merge_cells(f'A{current_row}:H{current_row}')
+    progress_cell = ws.cell(row=current_row, column=1, 
+                            value=f"Progresso: {completed_weeks}/{len(weeks)} semanas concluidas ({progress_percent_weeks}%) | {total_completed}/{total_capacidades} capacidades desenvolvidas ({progress_percent_caps}%)")
+    progress_cell.font = Font(bold=True, color="059669")
+    progress_cell.alignment = Alignment(horizontal="center")
+    current_row += 2
+    
+    if turma_id:
+        headers = ["Status", "Semana", "Atividades", "Unidade Curricular", "Capacidades", "Conhecimentos", "Recursos"]
+    else:
+        headers = ["Status", "Semana", "Turma", "Atividades", "Unidade Curricular", "Capacidades", "Conhecimentos", "Recursos"]
+    
+    header_row = current_row
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=current_row, column=col, value=header)
         cell.font = header_font
@@ -1156,40 +1310,104 @@ def export_xlsx():
     current_row += 1
     
     for week in weeks:
+        status = "Concluida" if week.get('completed') else "Pendente"
+        
+        caps = [c.strip() for c in week.get('capacidades', '').split('\n') if c.strip()]
+        completed_list = week.get('capacidades_completed', '').split(',') if week.get('capacidades_completed') else []
+        completed_list = [x for x in completed_list if x]
+        
+        capacidades_formatted = []
+        for idx, cap in enumerate(caps):
+            if str(idx) in completed_list:
+                capacidades_formatted.append(f"[OK] {cap}")
+            else:
+                capacidades_formatted.append(f"[ ] {cap}")
+        
+        capacidades_text = "\n".join(capacidades_formatted) if capacidades_formatted else week.get('capacidades', '')
+        
         if turma_id:
             row_data = [
+                status,
                 week["semana"],
                 week["atividades"],
                 week["unidadeCurricular"],
-                week["capacidades"],
+                capacidades_text,
                 week["conhecimentos"],
                 week["recursos"]
             ]
         else:
             row_data = [
+                status,
                 week["semana"],
                 week.get("turma_nome", ""),
                 week["atividades"],
                 week["unidadeCurricular"],
-                week["capacidades"],
+                capacidades_text,
                 week["conhecimentos"],
                 week["recursos"]
             ]
         
         for col, value in enumerate(row_data, 1):
             cell = ws.cell(row=current_row, column=col, value=value)
-            cell.alignment = cell_alignment
+            cell.alignment = cell_alignment if col > 2 else center_alignment
             cell.border = thin_border
+            
+            if week.get('completed'):
+                cell.fill = completed_fill
+                if col == 1:
+                    cell.font = completed_font
         
         current_row += 1
     
     if turma_id:
-        col_widths = [10, 40, 25, 35, 30, 25]
+        col_widths = [12, 10, 40, 25, 40, 30, 25]
     else:
-        col_widths = [10, 20, 35, 22, 30, 25, 22]
+        col_widths = [12, 10, 20, 35, 22, 35, 25, 22]
     
     for i, width in enumerate(col_widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = width
+    
+    if all_capacidades_desenvolvidas:
+        ws_caps = wb.create_sheet(title="Capacidades Desenvolvidas")
+        
+        ws_caps.merge_cells('A1:C1')
+        title_cell = ws_caps.cell(row=1, column=1, value="Capacidades Desenvolvidas")
+        title_cell.font = Font(bold=True, size=16, color="059669")
+        title_cell.alignment = Alignment(horizontal="center")
+        
+        ws_caps.merge_cells('A2:C2')
+        summary_cell = ws_caps.cell(row=2, column=1, 
+                                    value=f"Total de {len(all_capacidades_desenvolvidas)} capacidades desenvolvidas ao longo do curso")
+        summary_cell.alignment = Alignment(horizontal="center")
+        
+        caps_headers = ["Semana", "Unidade Curricular", "Capacidade Desenvolvida"]
+        for col, header in enumerate(caps_headers, 1):
+            cell = ws_caps.cell(row=4, column=col, value=header)
+            cell.font = header_font
+            cell.fill = green_header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+        
+        caps_row = 5
+        for cap_info in all_capacidades_desenvolvidas:
+            ws_caps.cell(row=caps_row, column=1, value=cap_info['semana']).alignment = center_alignment
+            ws_caps.cell(row=caps_row, column=1).border = thin_border
+            
+            ws_caps.cell(row=caps_row, column=2, value=cap_info['unidade']).alignment = cell_alignment
+            ws_caps.cell(row=caps_row, column=2).border = thin_border
+            
+            ws_caps.cell(row=caps_row, column=3, value=cap_info['capacidade']).alignment = cell_alignment
+            ws_caps.cell(row=caps_row, column=3).border = thin_border
+            
+            if caps_row % 2 == 0:
+                for col in range(1, 4):
+                    ws_caps.cell(row=caps_row, column=col).fill = PatternFill(start_color="ECFDF5", end_color="ECFDF5", fill_type="solid")
+            
+            caps_row += 1
+        
+        ws_caps.column_dimensions['A'].width = 10
+        ws_caps.column_dimensions['B'].width = 30
+        ws_caps.column_dimensions['C'].width = 80
     
     buffer = BytesIO()
     wb.save(buffer)

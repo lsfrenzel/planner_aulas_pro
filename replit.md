@@ -102,6 +102,12 @@ O projeto está configurado para deploy no Railway:
 - email-validator 2.3.0
 
 ## Recent Changes
+- 2025-12-12: PDF e Excel agora incluem resumo completo de todas as capacidades desenvolvidas
+- 2025-12-12: Relatorios mostram status de conclusao (Concluida/Pendente) para cada semana
+- 2025-12-12: Capacidades marcadas com [OK] ou [ ] nos relatorios para indicar progresso
+- 2025-12-12: Excel agora tem aba separada "Capacidades Desenvolvidas" com lista completa
+- 2025-12-12: PDF inclui secao "Capacidades Desenvolvidas" ao final com tabela dedicada
+- 2025-12-12: Linhas concluidas aparecem destacadas em verde nos relatorios
 - 2025-12-12: Adicionadas barras de progresso no dashboard para cada turma (semanas e capacidades)
 - 2025-12-12: Nova API /api/turmas/progress para calcular estatisticas de progresso por turma
 - 2025-12-12: Barras de progresso atualizam em tempo real ao marcar semanas/capacidades como concluidas
