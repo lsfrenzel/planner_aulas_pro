@@ -37,6 +37,7 @@ class Schedule(db.Model):
     capacidades = db.Column(db.Text, default='')
     conhecimentos = db.Column(db.Text, default='')
     recursos = db.Column(db.String(500), default='')
+    completed = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):
@@ -47,5 +48,6 @@ class Schedule(db.Model):
             'unidadeCurricular': self.unidade_curricular,
             'capacidades': self.capacidades,
             'conhecimentos': self.conhecimentos,
-            'recursos': self.recursos
+            'recursos': self.recursos,
+            'completed': self.completed
         }

@@ -386,6 +386,23 @@ def delete_week(week_id):
     return jsonify({"message": "Semana excluida com sucesso"})
 
 
+@app.route("/api/weeks/<int:week_id>/toggle-complete", methods=["POST"])
+@login_required
+def toggle_week_complete(week_id):
+    from models import Schedule
+    
+    user_id = session['user_id']
+    schedule = Schedule.query.filter_by(user_id=user_id, semana=week_id).first()
+    
+    if not schedule:
+        return jsonify({"error": "Semana nao encontrada"}), 404
+    
+    schedule.completed = not schedule.completed
+    db.session.commit()
+    
+    return jsonify(schedule.to_dict())
+
+
 @app.route("/api/export/json")
 @login_required
 def export_json():

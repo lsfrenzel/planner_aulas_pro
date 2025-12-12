@@ -169,6 +169,7 @@
                 <table class="w-full">
                     <thead>
                         <tr class="bg-gray-50 dark:bg-gray-700/50">
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">Status</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">Semana</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Atividades</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">Unidade Curricular</th>
@@ -179,27 +180,35 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         {% for week in weeks %}
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {% if week.completed %}bg-green-50 dark:bg-green-900/20{% endif %}" id="week-row-{{ week.semana }}">
+                            <td class="px-4 py-4 whitespace-nowrap">
+                                <button onclick="toggleComplete({{ week.semana }})" 
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer {% if week.completed %}bg-green-500 hover:bg-green-600{% else %}bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500{% endif %}"
+                                    id="check-btn-{{ week.semana }}"
+                                    title="{% if week.completed %}Marcar como pendente{% else %}Marcar como concluído{% endif %}">
+                                    <i class="fas fa-check text-white {% if not week.completed %}opacity-0{% endif %}" id="check-icon-{{ week.semana }}"></i>
+                                </button>
+                            </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
+                                    <div class="w-8 h-8 {% if week.completed %}bg-green-500{% else %}bg-primary-500{% endif %} rounded-lg flex items-center justify-center" id="week-badge-{{ week.semana }}">
                                         <span class="text-sm font-bold text-white">{{ week.semana }}</span>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-4 py-4">
-                                <p class="text-sm text-gray-700 dark:text-gray-300 max-w-xs">{{ week.atividades }}</p>
+                                <p class="text-sm text-gray-700 dark:text-gray-300 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-atividades-{{ week.semana }}">{{ week.atividades }}</p>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if week.completed %}bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300{% else %}bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300{% endif %}" id="week-unidade-{{ week.semana }}">
                                     {{ week.unidadeCurricular }}
                                 </span>
                             </td>
                             <td class="px-4 py-4">
-                                <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs">{{ week.capacidades }}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-capacidades-{{ week.semana }}">{{ week.capacidades }}</p>
                             </td>
                             <td class="px-4 py-4">
-                                <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs">{{ week.conhecimentos }}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-conhecimentos-{{ week.semana }}">{{ week.conhecimentos }}</p>
                             </td>
                             <td class="px-4 py-4">
                                 <div class="flex flex-wrap gap-1 max-w-xs">
@@ -213,7 +222,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="px-4 py-12 text-center">
+                            <td colspan="7" class="px-4 py-12 text-center">
                                 <div class="flex flex-col items-center">
                                     <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
                                         <i class="fas fa-calendar-plus text-2xl text-gray-400"></i>
@@ -251,6 +260,64 @@
                 row.style.display = text.includes(searchTerm) ? '' : 'none';
             });
         });
+
+        function toggleComplete(weekId) {
+            fetch(`/api/weeks/${weekId}/toggle-complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                const completed = data.completed;
+                const row = document.getElementById(`week-row-${weekId}`);
+                const btn = document.getElementById(`check-btn-${weekId}`);
+                const icon = document.getElementById(`check-icon-${weekId}`);
+                const badge = document.getElementById(`week-badge-${weekId}`);
+                const atividades = document.getElementById(`week-atividades-${weekId}`);
+                const unidade = document.getElementById(`week-unidade-${weekId}`);
+                const capacidades = document.getElementById(`week-capacidades-${weekId}`);
+                const conhecimentos = document.getElementById(`week-conhecimentos-${weekId}`);
+                
+                if (completed) {
+                    row.classList.add('bg-green-50', 'dark:bg-green-900/20');
+                    btn.classList.remove('bg-gray-200', 'dark:bg-gray-600', 'hover:bg-gray-300', 'dark:hover:bg-gray-500');
+                    btn.classList.add('bg-green-500', 'hover:bg-green-600');
+                    btn.title = 'Marcar como pendente';
+                    icon.classList.remove('opacity-0');
+                    badge.classList.remove('bg-primary-500');
+                    badge.classList.add('bg-green-500');
+                    atividades.classList.add('line-through', 'opacity-70');
+                    unidade.classList.remove('bg-purple-100', 'text-purple-800', 'dark:bg-purple-900/30', 'dark:text-purple-300');
+                    unidade.classList.add('bg-green-100', 'text-green-800', 'dark:bg-green-900/30', 'dark:text-green-300');
+                    capacidades.classList.add('line-through', 'opacity-70');
+                    conhecimentos.classList.add('line-through', 'opacity-70');
+                } else {
+                    row.classList.remove('bg-green-50', 'dark:bg-green-900/20');
+                    btn.classList.add('bg-gray-200', 'dark:bg-gray-600', 'hover:bg-gray-300', 'dark:hover:bg-gray-500');
+                    btn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    btn.title = 'Marcar como concluído';
+                    icon.classList.add('opacity-0');
+                    badge.classList.add('bg-primary-500');
+                    badge.classList.remove('bg-green-500');
+                    atividades.classList.remove('line-through', 'opacity-70');
+                    unidade.classList.add('bg-purple-100', 'text-purple-800', 'dark:bg-purple-900/30', 'dark:text-purple-300');
+                    unidade.classList.remove('bg-green-100', 'text-green-800', 'dark:bg-green-900/30', 'dark:text-green-300');
+                    capacidades.classList.remove('line-through', 'opacity-70');
+                    conhecimentos.classList.remove('line-through', 'opacity-70');
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao atualizar:', error);
+                alert('Erro ao atualizar o status da semana');
+            });
+        }
     </script>
 </body>
 </html>
