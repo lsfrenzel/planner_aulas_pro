@@ -1,0 +1,276 @@
+Crie um sistema web completo chamado Aula Planner Pro, baseado na estrutura, layout e funcionalidades do site https://aula-planner-games.vercel.app/
+, porém utilizando:
+
+Backend em Python (Flask)
+
+Frontend em HTML + Tailwind + JavaScript
+
+Banco de dados local em JSON
+
+O sistema deve iniciar já com o cronograma pré-preenchido (20 semanas).
+
+🎨 1. Estrutura e Design (frontend)
+
+Replique o design do site modelo:
+
+Layout com sidebar exibindo as semanas.
+
+Área principal com cards contendo:
+
+Atividades Práticas e Teóricas
+
+Unidade Curricular
+
+Capacidades Desenvolvidas
+
+Conhecimentos Trabalhados
+
+Recursos
+
+Tema claro e escuro.
+
+Totalmente responsivo com TailwindCSS.
+
+⚙️ 2. Funcionalidades obrigatórias
+Backend (Flask)
+
+Rotas:
+
+GET /api/weeks → retorna todo o cronograma
+
+GET /api/weeks/<id> → semana específica
+
+POST /api/weeks → adiciona semana
+
+PUT /api/weeks/<id> → edita semana
+
+DELETE /api/weeks/<id> → exclui semana
+
+Usar um arquivo data/weeks.json como banco.
+
+Frontend
+
+Sidebar listando semanas → seleciona para visualizar.
+
+Página da semana com cards editáveis.
+
+Botões:
+
+Adicionar semana
+
+Editar
+
+Excluir
+
+Filtros:
+
+Unidade Curricular
+
+Software/Recursos
+
+Busca por texto
+
+Exportações:
+
+Exportar cronograma para JSON
+
+Exportar cronograma para PDF (usar uma rota Flask geradora de PDF)
+
+💾 3. Banco de Dados
+
+Crie a pasta:
+
+data/
+   weeks.json
+
+
+Preencha o arquivo weeks.json com o seguinte conteúdo completo:
+
+[
+  {
+    "semana": 1,
+    "atividades": "Introdução à pipeline 3D. Criação de formas básicas e ambientação no 3ds Max.",
+    "unidadeCurricular": "Design de Concept Art",
+    "capacidades": "Utilizar métodos e técnicas para manipulação de elementos 3D; demonstrar pensamento analítico.",
+    "conhecimentos": "Fundamentos da modelagem 3D, geometria, escala e blocagem.",
+    "recursos": "3ds Max, Preview (referências visuais), QuickTime Player (capturas de tela)"
+  },
+  {
+    "semana": 2,
+    "atividades": "Modelagem de objetos LowPoly e aplicação de proporção e escala.",
+    "unidadeCurricular": "Design de Concept Art",
+    "capacidades": "Aplicar técnicas de modelagem e blocagem 3D.",
+    "conhecimentos": "Modelagem poligonal, proporção e simetria.",
+    "recursos": "3ds Max, Preview"
+  },
+  {
+    "semana": 3,
+    "atividades": "Modelagem de cenário 3D com composição e perspectiva.",
+    "unidadeCurricular": "Design de Concept Art",
+    "capacidades": "Criar cenários imersivos e composições equilibrados.",
+    "conhecimentos": "Perspectiva, composição e ambientação.",
+    "recursos": "3ds Max, QuickTime Player"
+  },
+  {
+    "semana": 4,
+    "atividades": "Criação e organização de UV Maps e aplicação de texturas PBR.",
+    "unidadeCurricular": "Design de Concept Art",
+    "capacidades": "Realizar abertura de UV Map e aplicar texturização realista.",
+    "conhecimentos": "UV Unwrapping, texturas PBR e materiais.",
+    "recursos": "3ds Max, Preview, QuickTime Player"
+  },
+  {
+    "semana": 5,
+    "atividades": "Iluminação HDR e renderização de prévia visual.",
+    "unidadeCurricular": "Design de Concept Art",
+    "capacidades": "Criar cenários e aplicar efeitos de iluminação e HDR.",
+    "conhecimentos": "Iluminação, sombras e reflexos.",
+    "recursos": "3ds Max, QuickTime Player"
+  },
+  {
+    "semana": 6,
+    "atividades": "Exportação do cenário e objetos para o Maya.",
+    "unidadeCurricular": "Design de Concept Art",
+    "capacidades": "Configurar e validar mídias digitais para integração.",
+    "conhecimentos": "Formatos FBX, compatibilidade e otimização.",
+    "recursos": "3ds Max, Maya, Preview"
+  },
+  {
+    "semana": 7,
+    "atividades": "Introdução ao Maya: interface, modelagem orgânica e refinamento de personagens.",
+    "unidadeCurricular": "Design de Concept Art",
+    "capacidades": "Aplicar métodos e técnicas de modelagem orgânica.",
+    "conhecimentos": "Topologia, anatomia básica e escultura.",
+    "recursos": "Maya, QuickTime Player"
+  },
+  {
+    "semana": 8,
+    "atividades": "Criação de rigging básico e controle de movimento.",
+    "unidadeCurricular": "Design de Concept Art",
+    "capacidades": "Aplicar rigging para construção de pose.",
+    "conhecimentos": "Hierarquia, pivôs e esqueleto.",
+    "recursos": "Maya, QuickTime Player"
+  },
+  {
+    "semana": 9,
+    "atividades": "Aplicação de materiais e texturas detalhadas nos personagens.",
+    "unidadeCurricular": "Design de Concept Art",
+    "capacidades": "Aplicar estilos artísticos diferenciados e validar estética 3D.",
+    "conhecimentos": "Shaders, texturas estilizadas e PBR.",
+    "recursos": "Maya, Preview, QuickTime Player"
+  },
+  {
+    "semana": 10,
+    "atividades": "Exportação dos personagens e cenários do Maya para o Unity.",
+    "unidadeCurricular": "Design de Concept Art / Programação",
+    "capacidades": "Configurar elementos multimídia dentro da engine.",
+    "conhecimentos": "Pipeline FBX, importação e hierarquias.",
+    "recursos": "Maya, Unity, QuickTime Player"
+  },
+  {
+    "semana": 11,
+    "atividades": "Instalação e configuração do ambiente Unity. Estrutura de projeto e Git.",
+    "unidadeCurricular": "Programação de Jogos Digitais e Simuladores",
+    "capacidades": "Preparar ambiente de desenvolvimento e definir estratégia de versionamento.",
+    "conhecimentos": "SDKs, templates, GitHub e versionamento.",
+    "recursos": "Unity, GitHub Desktop, QuickTime Player"
+  },
+  {
+    "semana": 12,
+    "atividades": "Programação em C# na Unity: movimentação e controle de câmera.",
+    "unidadeCurricular": "Programação de Jogos Digitais e Simuladores",
+    "capacidades": "Codificar scripts de interação e gameplay.",
+    "conhecimentos": "Variáveis, classes, métodos e transformações.",
+    "recursos": "Unity, Visual Studio Code"
+  },
+  {
+    "semana": 13,
+    "atividades": "Adição de colisores, física e sistemas de interação.",
+    "unidadeCurricular": "Programação de Jogos Digitais e Simuladores",
+    "capacidades": "Integrar componentes e aplicar física.",
+    "conhecimentos": "Rigidbody, Collider e triggers.",
+    "recursos": "Unity"
+  },
+  {
+    "semana": 14,
+    "atividades": "Criação de HUD, menus e controles de usuário.",
+    "unidadeCurricular": "Programação de Jogos Digitais e Simuladores",
+    "capacidades": "Utilizar padrões de interatividade e acessibilidade.",
+    "conhecimentos": "Canvas, eventos, botões e textos.",
+    "recursos": "Unity, QuickTime Player"
+  },
+  {
+    "semana": 15,
+    "atividades": "Adição de áudio 3D, partículas e efeitos de ambiente.",
+    "unidadeCurricular": "Programação de Jogos Digitais e Simuladores",
+    "capacidades": "Incorporar elementos audiovisuais e validar imersão.",
+    "conhecimentos": "Áudio espacial, partículas e iluminação dinâmica.",
+    "recursos": "Unity, GarageBand, QuickTime Player"
+  },
+  {
+    "semana": 16,
+    "atividades": "Desenvolvimento do protótipo funcional e documentação.",
+    "unidadeCurricular": "Programação de Jogos Digitais e Simuladores",
+    "capacidades": "Elaborar protótipo e documentar o processo.",
+    "conhecimentos": "Estrutura de projeto, hierarquias e fluxo de jogo.",
+    "recursos": "Unity, Pages, Numbers"
+  },
+  {
+    "semana": 17,
+    "atividades": "Testes internos e manutenção preventiva.",
+    "unidadeCurricular": "Manutenção de Jogos Digitais e Simuladores",
+    "capacidades": "Aplicar manutenção preventiva e corretiva.",
+    "conhecimentos": "Diagnóstico de erros, FPS e performance.",
+    "recursos": "Unity, QuickTime Player"
+  },
+  {
+    "semana": 18,
+    "atividades": "Planejamento de atualizações e coleta de feedback.",
+    "unidadeCurricular": "Manutenção de Jogos Digitais e Simuladores",
+    "capacidades": "Planejar atualizações e priorizar correções.",
+    "conhecimentos": "Tipos de manutenção, planejamento iterativo.",
+    "recursos": "Unity, Numbers, GitHub"
+  },
+  {
+    "semana": 19,
+    "atividades": "Elaboração e revisão do GDD com ajustes finais.",
+    "unidadeCurricular": "Projetos Multimídia",
+    "capacidades": "Definir sequência de atividades e cronograma final.",
+    "conhecimentos": "Estrutura GDD, escopo e avaliação.",
+    "recursos": "Pages, GarageBand, Unity"
+  },
+  {
+    "semana": 20,
+    "atividades": "Apresentação final (Demo Alpha 3D).",
+    "unidadeCurricular": "Projetos Multimídia / Todas as UCs",
+    "capacidades": "Demonstrar autogestão e integração de áreas.",
+    "conhecimentos": "Avaliação técnica e documentação.",
+    "recursos": "Unity, QuickTime Player, iMovie"
+  }
+]
+
+🖥️ 4. Estrutura de pastas do projeto
+
+O Replit deve gerar esta estrutura:
+
+/static
+   /css
+   /js
+/templates
+data/weeks.json
+app.py
+requirements.txt
+
+🎯 5. Objetivo final
+
+Criar um sistema completo em Python, visualmente similar ao projeto de referência, totalmente funcional para planejamento de aulas, com:
+
+CRUD completo
+
+Exportações
+
+Filtros
+
+Tema claro/escuro
+
+Dados inicializados automaticamente
