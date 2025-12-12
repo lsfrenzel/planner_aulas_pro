@@ -105,9 +105,39 @@ def init_data():
             db.session.commit()
 
 
+def run_migrations():
+    """Run database migrations for new columns if they don't exist"""
+    from sqlalchemy import text
+    
+    migrations = [
+        ("turmas", "carga_horaria", "ALTER TABLE turmas ADD COLUMN carga_horaria INTEGER"),
+        ("turmas", "dias_aula", "ALTER TABLE turmas ADD COLUMN dias_aula VARCHAR(100)"),
+        ("turmas", "horario_inicio", "ALTER TABLE turmas ADD COLUMN horario_inicio VARCHAR(10)"),
+        ("turmas", "horario_fim", "ALTER TABLE turmas ADD COLUMN horario_fim VARCHAR(10)"),
+        ("turmas", "data_inicio", "ALTER TABLE turmas ADD COLUMN data_inicio DATE"),
+        ("turmas", "data_fim", "ALTER TABLE turmas ADD COLUMN data_fim DATE"),
+    ]
+    
+    for table, column, sql in migrations:
+        try:
+            check_sql = text(f"""
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = :table AND column_name = :column
+            """)
+            result = db.session.execute(check_sql, {"table": table, "column": column}).fetchone()
+            if not result:
+                db.session.execute(text(sql))
+                db.session.commit()
+                logging.info(f"Migration: Added column {column} to {table}")
+        except Exception as e:
+            db.session.rollback()
+            logging.warning(f"Migration warning for {table}.{column}: {e}")
+
+
 with app.app_context():
     import models
     db.create_all()
+    run_migrations()
     init_data()
 
 
