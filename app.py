@@ -692,11 +692,22 @@ def export_json():
 @app.route("/api/export/pdf")
 @login_required
 def export_pdf():
-    from models import Schedule
+    from models import Schedule, Turma
+    from datetime import datetime
     
     user_id = session['user_id']
-    schedules = Schedule.query.filter_by(user_id=user_id).order_by(Schedule.semana).all()
+    turma_id = request.args.get('turma_id', type=int)
+    
+    query = Schedule.query.filter_by(user_id=user_id)
+    if turma_id:
+        query = query.filter_by(turma_id=turma_id)
+    
+    schedules = query.order_by(Schedule.semana).all()
     weeks = [s.to_dict() for s in schedules]
+    
+    turma = None
+    if turma_id:
+        turma = Turma.query.filter_by(id=turma_id, user_id=user_id).first()
     
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -715,8 +726,25 @@ def export_pdf():
         'CustomTitle',
         parent=styles['Heading1'],
         fontSize=18,
-        spaceAfter=20,
+        spaceAfter=10,
         alignment=1
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        spaceAfter=5,
+        alignment=1,
+        textColor=colors.HexColor('#4B5563')
+    )
+    
+    info_style = ParagraphStyle(
+        'InfoStyle',
+        parent=styles['Normal'],
+        fontSize=9,
+        spaceAfter=3,
+        textColor=colors.HexColor('#374151')
     )
     
     cell_style = ParagraphStyle(
@@ -726,24 +754,67 @@ def export_pdf():
         leading=9
     )
     
-    elements.append(Paragraph("Aula Planner Pro - Cronograma Completo", title_style))
-    elements.append(Spacer(1, 10))
+    if turma:
+        elements.append(Paragraph(f"Cronograma - {turma.nome}", title_style))
+        if turma.descricao:
+            elements.append(Paragraph(turma.descricao, subtitle_style))
+        elements.append(Spacer(1, 10))
+        
+        info_items = []
+        if turma.carga_horaria:
+            info_items.append(f"<b>Carga Horaria:</b> {turma.carga_horaria}h")
+        if turma.dias_aula:
+            info_items.append(f"<b>Dias de Aula:</b> {turma.dias_aula}")
+        if turma.horario_inicio and turma.horario_fim:
+            info_items.append(f"<b>Horario:</b> {turma.horario_inicio} - {turma.horario_fim}")
+        elif turma.horario_inicio:
+            info_items.append(f"<b>Horario:</b> {turma.horario_inicio}")
+        
+        if turma.data_inicio or turma.data_fim:
+            data_inicio_str = turma.data_inicio.strftime('%d/%m/%Y') if turma.data_inicio else '-'
+            data_fim_str = turma.data_fim.strftime('%d/%m/%Y') if turma.data_fim else '-'
+            info_items.append(f"<b>Periodo:</b> {data_inicio_str} a {data_fim_str}")
+        
+        if info_items:
+            info_text = " &nbsp;&nbsp;|&nbsp;&nbsp; ".join(info_items)
+            elements.append(Paragraph(info_text, info_style))
+            elements.append(Spacer(1, 15))
+    else:
+        elements.append(Paragraph("Aula Planner Pro - Cronograma Completo", title_style))
+        elements.append(Spacer(1, 10))
     
     headers = ["Semana", "Atividades", "Unidade Curricular", "Capacidades", "Conhecimentos", "Recursos"]
     
+    if not turma_id:
+        headers.insert(1, "Turma")
+    
     data = [headers]
     for week in weeks:
-        row = [
-            str(week["semana"]),
-            Paragraph(week["atividades"], cell_style),
-            Paragraph(week["unidadeCurricular"], cell_style),
-            Paragraph(week["capacidades"], cell_style),
-            Paragraph(week["conhecimentos"], cell_style),
-            Paragraph(week["recursos"], cell_style)
-        ]
+        if turma_id:
+            row = [
+                str(week["semana"]),
+                Paragraph(week["atividades"], cell_style),
+                Paragraph(week["unidadeCurricular"], cell_style),
+                Paragraph(week["capacidades"], cell_style),
+                Paragraph(week["conhecimentos"], cell_style),
+                Paragraph(week["recursos"], cell_style)
+            ]
+        else:
+            row = [
+                str(week["semana"]),
+                Paragraph(week.get("turma_nome", ""), cell_style),
+                Paragraph(week["atividades"], cell_style),
+                Paragraph(week["unidadeCurricular"], cell_style),
+                Paragraph(week["capacidades"], cell_style),
+                Paragraph(week["conhecimentos"], cell_style),
+                Paragraph(week["recursos"], cell_style)
+            ]
         data.append(row)
     
-    col_widths = [1.2*cm, 5*cm, 4*cm, 5*cm, 4.5*cm, 4*cm]
+    if turma_id:
+        col_widths = [1.2*cm, 5*cm, 4*cm, 5*cm, 4.5*cm, 4*cm]
+    else:
+        col_widths = [1*cm, 3*cm, 4.5*cm, 3.5*cm, 4.5*cm, 4*cm, 3.5*cm]
     
     table = Table(data, colWidths=col_widths, repeatRows=1)
     table.setStyle(TableStyle([
@@ -769,11 +840,13 @@ def export_pdf():
     doc.build(elements)
     buffer.seek(0)
     
+    filename = f"cronograma_{turma.nome.replace(' ', '_')}.pdf" if turma else "cronograma.pdf"
+    
     return send_file(
         buffer,
         mimetype='application/pdf',
         as_attachment=True,
-        download_name='cronograma.pdf'
+        download_name=filename
     )
 
 

@@ -73,7 +73,7 @@
                         <i class="fas fa-th-large"></i>
                         <span class="hidden sm:inline">Visualizar Cards</span>
                     </a>
-                    <a href="/api/export/pdf" class="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-2">
+                    <a href="#" onclick="exportPDF()" class="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-2">
                         <i class="fas fa-file-pdf"></i>
                         <span class="hidden sm:inline">Exportar PDF</span>
                     </a>
@@ -167,6 +167,50 @@
             </div>
         </div>
 
+        <div id="turmaInfoPanel" class="bg-gradient-to-r from-primary-50 to-blue-50 dark:from-gray-800 dark:to-gray-700 rounded-xl p-6 border border-primary-200 dark:border-gray-600 mb-6 hidden">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-primary-500 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-users text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 id="turmaInfoNome" class="text-xl font-bold text-gray-800 dark:text-white"></h3>
+                        <p id="turmaInfoDescricao" class="text-sm text-gray-600 dark:text-gray-300 mt-1"></p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                        <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-xs mb-1">
+                            <i class="fas fa-clock"></i>
+                            <span>Carga Horaria</span>
+                        </div>
+                        <p id="turmaInfoCargaHoraria" class="text-lg font-semibold text-gray-800 dark:text-white"></p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                        <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-xs mb-1">
+                            <i class="fas fa-calendar-day"></i>
+                            <span>Dias de Aula</span>
+                        </div>
+                        <p id="turmaInfoDiasAula" class="text-lg font-semibold text-gray-800 dark:text-white"></p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                        <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-xs mb-1">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span>Horario</span>
+                        </div>
+                        <p id="turmaInfoHorario" class="text-lg font-semibold text-gray-800 dark:text-white"></p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                        <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-xs mb-1">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Periodo</span>
+                        </div>
+                        <p id="turmaInfoPeriodo" class="text-sm font-semibold text-gray-800 dark:text-white"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="p-5 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -197,18 +241,18 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         {% for week in weeks %}
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {% if week.completed %}bg-green-50 dark:bg-green-900/20{% endif %}" id="week-row-{{ week.semana }}">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {% if week.completed %}bg-green-50 dark:bg-green-900/20{% endif %}" id="week-row-{{ week.id }}" data-week-id="{{ week.id }}">
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <button onclick="toggleComplete({{ week.semana }})" 
+                                <button onclick="toggleComplete({{ week.id }})" 
                                     class="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer {% if week.completed %}bg-green-500 hover:bg-green-600{% else %}bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500{% endif %}"
-                                    id="check-btn-{{ week.semana }}"
+                                    id="check-btn-{{ week.id }}"
                                     title="{% if week.completed %}Marcar como pendente{% else %}Marcar como concluído{% endif %}">
-                                    <i class="fas fa-check text-white {% if not week.completed %}opacity-0{% endif %}" id="check-icon-{{ week.semana }}"></i>
+                                    <i class="fas fa-check text-white {% if not week.completed %}opacity-0{% endif %}" id="check-icon-{{ week.id }}"></i>
                                 </button>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 {% if week.completed %}bg-green-500{% else %}bg-primary-500{% endif %} rounded-lg flex items-center justify-center" id="week-badge-{{ week.semana }}">
+                                    <div class="w-8 h-8 {% if week.completed %}bg-green-500{% else %}bg-primary-500{% endif %} rounded-lg flex items-center justify-center" id="week-badge-{{ week.id }}">
                                         <span class="text-sm font-bold text-white">{{ week.semana }}</span>
                                     </div>
                                 </div>
@@ -219,18 +263,18 @@
                                 </span>
                             </td>
                             <td class="px-4 py-4">
-                                <p class="text-sm text-gray-700 dark:text-gray-300 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-atividades-{{ week.semana }}">{{ week.atividades }}</p>
+                                <p class="text-sm text-gray-700 dark:text-gray-300 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-atividades-{{ week.id }}">{{ week.atividades }}</p>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if week.completed %}bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300{% else %}bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300{% endif %}" id="week-unidade-{{ week.semana }}">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if week.completed %}bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300{% else %}bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300{% endif %}" id="week-unidade-{{ week.id }}">
                                     {{ week.unidadeCurricular }}
                                 </span>
                             </td>
                             <td class="px-4 py-4">
-                                <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-capacidades-{{ week.semana }}">{{ week.capacidades }}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-capacidades-{{ week.id }}">{{ week.capacidades }}</p>
                             </td>
                             <td class="px-4 py-4">
-                                <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-conhecimentos-{{ week.semana }}">{{ week.conhecimentos }}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-conhecimentos-{{ week.id }}">{{ week.conhecimentos }}</p>
                             </td>
                             <td class="px-4 py-4">
                                 <div class="flex flex-wrap gap-1 max-w-xs">
@@ -298,14 +342,15 @@
                 }
                 
                 const completed = data.completed;
-                const row = document.getElementById(`week-row-${weekId}`);
-                const btn = document.getElementById(`check-btn-${weekId}`);
-                const icon = document.getElementById(`check-icon-${weekId}`);
-                const badge = document.getElementById(`week-badge-${weekId}`);
-                const atividades = document.getElementById(`week-atividades-${weekId}`);
-                const unidade = document.getElementById(`week-unidade-${weekId}`);
-                const capacidades = document.getElementById(`week-capacidades-${weekId}`);
-                const conhecimentos = document.getElementById(`week-conhecimentos-${weekId}`);
+                const id = data.id;
+                const row = document.getElementById(`week-row-${id}`);
+                const btn = document.getElementById(`check-btn-${id}`);
+                const icon = document.getElementById(`check-icon-${id}`);
+                const badge = document.getElementById(`week-badge-${id}`);
+                const atividades = document.getElementById(`week-atividades-${id}`);
+                const unidade = document.getElementById(`week-unidade-${id}`);
+                const capacidades = document.getElementById(`week-capacidades-${id}`);
+                const conhecimentos = document.getElementById(`week-conhecimentos-${id}`);
                 
                 if (completed) {
                     row.classList.add('bg-green-50', 'dark:bg-green-900/20');
@@ -341,10 +386,19 @@
             });
         }
 
+        let turmasData = [];
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('pt-BR');
+        }
+
         function loadTurmas() {
             fetch('/api/turmas')
                 .then(response => response.json())
                 .then(turmas => {
+                    turmasData = turmas;
                     const select = document.getElementById('turmaFilter');
                     turmas.forEach(turma => {
                         const option = document.createElement('option');
@@ -355,9 +409,51 @@
                 });
         }
 
+        function showTurmaInfo(turmaId) {
+            const panel = document.getElementById('turmaInfoPanel');
+            
+            if (!turmaId) {
+                panel.classList.add('hidden');
+                return;
+            }
+            
+            const turma = turmasData.find(t => t.id == turmaId);
+            if (!turma) {
+                panel.classList.add('hidden');
+                return;
+            }
+            
+            document.getElementById('turmaInfoNome').textContent = turma.nome || '-';
+            document.getElementById('turmaInfoDescricao').textContent = turma.descricao || 'Sem descricao';
+            document.getElementById('turmaInfoCargaHoraria').textContent = turma.carga_horaria ? `${turma.carga_horaria}h` : '-';
+            document.getElementById('turmaInfoDiasAula').textContent = turma.dias_aula || '-';
+            
+            const horarioInicio = turma.horario_inicio || '';
+            const horarioFim = turma.horario_fim || '';
+            if (horarioInicio && horarioFim) {
+                document.getElementById('turmaInfoHorario').textContent = `${horarioInicio} - ${horarioFim}`;
+            } else if (horarioInicio) {
+                document.getElementById('turmaInfoHorario').textContent = horarioInicio;
+            } else {
+                document.getElementById('turmaInfoHorario').textContent = '-';
+            }
+            
+            const dataInicio = formatDate(turma.data_inicio);
+            const dataFim = formatDate(turma.data_fim);
+            if (dataInicio !== '-' || dataFim !== '-') {
+                document.getElementById('turmaInfoPeriodo').textContent = `${dataInicio} a ${dataFim}`;
+            } else {
+                document.getElementById('turmaInfoPeriodo').textContent = '-';
+            }
+            
+            panel.classList.remove('hidden');
+        }
+
         function filterByTurma() {
             const selectedTurma = document.getElementById('turmaFilter').value;
             const rows = document.querySelectorAll('tbody tr[id^="week-row-"]');
+            
+            showTurmaInfo(selectedTurma);
             
             rows.forEach(row => {
                 const turmaCell = row.querySelector('td[data-turma-id]');
@@ -371,6 +467,15 @@
                     row.style.display = 'none';
                 }
             });
+        }
+
+        function exportPDF() {
+            const selectedTurma = document.getElementById('turmaFilter').value;
+            let url = '/api/export/pdf';
+            if (selectedTurma) {
+                url += '?turma_id=' + selectedTurma;
+            }
+            window.location.href = url;
         }
 
         loadTurmas();
