@@ -123,6 +123,7 @@ def run_migrations():
         ("users", "photo", "ALTER TABLE users ADD COLUMN photo VARCHAR(255) DEFAULT ''"),
         ("users", "photo_data", "ALTER TABLE users ADD COLUMN photo_data TEXT DEFAULT ''"),
         ("users", "photo_mimetype", "ALTER TABLE users ADD COLUMN photo_mimetype VARCHAR(50) DEFAULT ''"),
+        ("schedules", "capacidades_completed", "ALTER TABLE schedules ADD COLUMN capacidades_completed TEXT DEFAULT ''"),
     ]
     
     for table, column, sql in migrations:
@@ -743,6 +744,41 @@ def toggle_week_complete(week_id):
     db.session.commit()
     
     return jsonify(schedule.to_dict())
+
+
+@app.route("/api/weeks/<int:week_id>/toggle-capacidade", methods=["POST"])
+@login_required
+def toggle_capacidade(week_id):
+    from models import Schedule
+    
+    user_id = session['user_id']
+    schedule = Schedule.query.filter_by(id=week_id, user_id=user_id).first()
+    
+    if not schedule:
+        return jsonify({"error": "Semana nao encontrada"}), 404
+    
+    data = request.get_json()
+    capacidade_index = data.get("index")
+    
+    if capacidade_index is None:
+        return jsonify({"error": "Indice da capacidade nao informado"}), 400
+    
+    completed_list = schedule.capacidades_completed.split(',') if schedule.capacidades_completed else []
+    completed_list = [x for x in completed_list if x]
+    
+    index_str = str(capacidade_index)
+    if index_str in completed_list:
+        completed_list.remove(index_str)
+    else:
+        completed_list.append(index_str)
+    
+    schedule.capacidades_completed = ','.join(completed_list)
+    db.session.commit()
+    
+    return jsonify({
+        "id": schedule.id,
+        "capacidades_completed": schedule.capacidades_completed
+    })
 
 
 @app.route("/api/migrate")

@@ -332,7 +332,25 @@
                                 </span>
                             </td>
                             <td class="px-4 py-4">
-                                <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-capacidades-{{ week.id }}">{{ week.capacidades }}</p>
+                                <div class="flex flex-col gap-1 max-w-xs" id="week-capacidades-{{ week.id }}" data-completed="{{ week.capacidades_completed }}">
+                                    {% set completed_list = week.capacidades_completed.split(',') if week.capacidades_completed else [] %}
+                                    {% for cap in week.capacidades.split('\n') if cap.strip() %}
+                                    <label class="flex items-start gap-2 cursor-pointer group" onclick="toggleCapacidade(event, {{ week.id }}, {{ loop.index0 }})">
+                                        <div class="flex-shrink-0 mt-0.5">
+                                            <div class="w-5 h-5 rounded border-2 flex items-center justify-center transition-all
+                                                {% if loop.index0|string in completed_list %}bg-green-500 border-green-500{% else %}border-gray-300 dark:border-gray-600 group-hover:border-green-400{% endif %}"
+                                                id="cap-check-{{ week.id }}-{{ loop.index0 }}">
+                                                <i class="fas fa-check text-white text-xs {% if loop.index0|string not in completed_list %}opacity-0{% endif %}" id="cap-icon-{{ week.id }}-{{ loop.index0 }}"></i>
+                                            </div>
+                                        </div>
+                                        <span class="text-sm transition-all
+                                            {% if loop.index0|string in completed_list %}text-green-600 dark:text-green-400 line-through{% else %}text-gray-600 dark:text-gray-400{% endif %}"
+                                            id="cap-text-{{ week.id }}-{{ loop.index0 }}">{{ cap.strip() }}</span>
+                                    </label>
+                                    {% else %}
+                                    <span class="text-sm text-gray-400 italic">Nenhuma capacidade</span>
+                                    {% endfor %}
+                                </div>
                             </td>
                             <td class="px-4 py-4">
                                 <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs {% if week.completed %}line-through opacity-70{% endif %}" id="week-conhecimentos-{{ week.id }}">{{ week.conhecimentos }}</p>
@@ -459,6 +477,50 @@
             .catch(error => {
                 console.error('Erro ao atualizar:', error);
                 alert('Erro ao atualizar o status da semana');
+            });
+        }
+
+        function toggleCapacidade(event, weekId, index) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            fetch(`/api/weeks/${weekId}/toggle-capacidade`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ index: index })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                const completedList = data.capacidades_completed ? data.capacidades_completed.split(',') : [];
+                const isCompleted = completedList.includes(String(index));
+                
+                const checkBox = document.getElementById(`cap-check-${weekId}-${index}`);
+                const icon = document.getElementById(`cap-icon-${weekId}-${index}`);
+                const text = document.getElementById(`cap-text-${weekId}-${index}`);
+                
+                if (isCompleted) {
+                    checkBox.classList.remove('border-gray-300', 'dark:border-gray-600');
+                    checkBox.classList.add('bg-green-500', 'border-green-500');
+                    icon.classList.remove('opacity-0');
+                    text.classList.remove('text-gray-600', 'dark:text-gray-400');
+                    text.classList.add('text-green-600', 'dark:text-green-400', 'line-through');
+                } else {
+                    checkBox.classList.add('border-gray-300', 'dark:border-gray-600');
+                    checkBox.classList.remove('bg-green-500', 'border-green-500');
+                    icon.classList.add('opacity-0');
+                    text.classList.add('text-gray-600', 'dark:text-gray-400');
+                    text.classList.remove('text-green-600', 'dark:text-green-400', 'line-through');
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao atualizar capacidade:', error);
             });
         }
 

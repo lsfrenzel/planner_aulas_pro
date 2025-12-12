@@ -82,6 +82,7 @@ class Schedule(db.Model):
     atividades = db.Column(db.Text, default='')
     unidade_curricular = db.Column(db.String(200), default='')
     capacidades = db.Column(db.Text, default='')
+    capacidades_completed = db.Column(db.Text, default='')
     conhecimentos = db.Column(db.Text, default='')
     recursos = db.Column(db.String(500), default='')
     completed = db.Column(db.Boolean, default=False)
@@ -97,6 +98,7 @@ class Schedule(db.Model):
             'atividades': self.atividades,
             'unidadeCurricular': self.unidade_curricular,
             'capacidades': self.capacidades,
+            'capacidades_completed': self.capacidades_completed or '',
             'conhecimentos': self.conhecimentos,
             'recursos': self.recursos,
             'completed': self.completed
