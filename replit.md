@@ -1,17 +1,23 @@
 # Aula Planner Pro
 
 ## Overview
-Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python) e interface moderna usando Tailwind CSS. O sistema permite gerenciar um cronograma de 20 semanas com funcionalidades CRUD completas, autenticação de usuários e painel administrativo.
+Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python), PostgreSQL e interface moderna usando Tailwind CSS. O sistema permite gerenciar um cronograma de 20 semanas com funcionalidades CRUD completas, autenticação de usuários, painel administrativo e dashboard com visualização em tabela.
 
 ## Project Architecture
 
-### Backend (Flask)
-- **app.py**: Aplicação principal com API REST e autenticação
+### Backend (Flask + PostgreSQL)
+- **app.py**: Aplicação principal com API REST, autenticação e Flask-SQLAlchemy
+- **models.py**: Modelos do banco de dados (User, Schedule)
+- **main.py**: Ponto de entrada para o servidor
 
 #### Rotas de Autenticação
 - `GET/POST /login` - Tela de login
 - `GET /logout` - Encerrar sessão
 - `GET /admin` - Painel administrativo (apenas admins)
+
+#### Rotas de Visualização
+- `GET /` - Interface principal com cards
+- `GET /dashboard` - Dashboard com tabela de todas as semanas
 
 #### API de Usuários (Admin)
 - `GET /api/users` - Lista todos os usuários
@@ -20,7 +26,7 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - `DELETE /api/users/<id>` - Remove usuário
 
 #### API de Semanas
-- `GET /api/weeks` - Lista todas as semanas
+- `GET /api/weeks` - Lista todas as semanas do usuário
 - `GET /api/weeks/<id>` - Retorna semana específica
 - `POST /api/weeks` - Adiciona nova semana
 - `PUT /api/weeks/<id>` - Edita semana existente
@@ -29,22 +35,23 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - `GET /api/export/pdf` - Exporta cronograma em PDF
 
 ### Frontend
-- **templates/index.html**: Interface principal do cronograma
+- **templates/index.html**: Interface principal do cronograma (cards)
+- **templates/dashboard.html**: Dashboard com visualização em tabela
 - **templates/login.html**: Tela de login
 - **templates/admin.html**: Painel de gerenciamento de usuários
 - **static/js/app.js**: JavaScript para interatividade
 - **static/css/style.css**: Estilos customizados
 
-### Banco de Dados
-- **data/users.db**: Banco SQLite contendo:
-  - **users**: Tabela de usuários (id, name, email, password_hash, role, active)
-  - **schedules**: Tabela de cronogramas por usuário (id, user_id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos)
+### Banco de Dados (PostgreSQL)
+- **users**: Tabela de usuários (id, name, email, password_hash, role, active, created_at)
+- **schedules**: Tabela de cronogramas por usuário (id, user_id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos, created_at)
 - Cada usuário vê apenas seus próprios cronogramas
 - O admin inicial recebe os dados migrados do weeks.json original
 
 ## Features
 - Autenticação de usuários com senha criptografada
 - Painel admin para gerenciamento de usuários
+- Dashboard com visualização em tabela de todas as semanas
 - CRUD completo de semanas
 - Tema claro/escuro com persistência
 - Filtros por Unidade Curricular e Recursos
@@ -52,6 +59,7 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - Exportação para JSON e PDF
 - Interface responsiva
 - Sidebar navegável
+- Estatísticas (total semanas, unidades curriculares, recursos)
 
 ## Credenciais Padrão
 - **Email**: admin@aula.com
@@ -59,17 +67,35 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 
 ## Running the Project
 ```bash
-python app.py
+gunicorn --bind 0.0.0.0:5000 main:app
 ```
 O servidor inicia na porta 5000.
 
+## Railway Deployment
+O projeto está configurado para deploy no Railway:
+- **Procfile**: Configuração do processo web
+- **requirements.txt**: Dependências Python
+- **runtime.txt**: Versão do Python (3.11.6)
+
+### Variáveis de Ambiente Necessárias no Railway
+- `DATABASE_URL`: URL de conexão PostgreSQL (fornecida automaticamente pelo Railway)
+- `SESSION_SECRET`: Chave secreta para sessões Flask
+
 ## Dependencies
-- Flask
-- ReportLab (geração de PDF)
-- Werkzeug (hash de senhas)
+- Flask 3.0.0
+- Flask-SQLAlchemy 3.1.1
+- SQLAlchemy 2.0.23
+- psycopg2-binary 2.9.11
+- gunicorn 23.0.0
+- ReportLab 4.4.6
+- Werkzeug 3.0.1
+- email-validator 2.3.0
 
 ## Recent Changes
-- 2025-12-12: Implementado isolamento de dados por usuário - cada usuário vê apenas seus próprios cronogramas
-- 2025-12-12: Removidas credenciais padrão da tela de login por segurança
+- 2025-12-12: Adicionado dashboard com visualização em tabela de todas as semanas
+- 2025-12-12: Migrado de SQLite para PostgreSQL (compatível com Railway)
+- 2025-12-12: Adicionados arquivos de deploy (Procfile, requirements.txt, runtime.txt)
+- 2025-12-12: Implementado isolamento de dados por usuário
+- 2025-12-12: Removidas credenciais padrão da tela de login
 - 2025-12-12: Adicionado sistema de autenticação e painel admin
-- 2025-12-12: Criação inicial do projeto com todas as funcionalidades
+- 2025-12-12: Criação inicial do projeto

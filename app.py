@@ -1,9 +1,12 @@
 import json
 import os
-import sqlite3
+import logging
 from functools import wraps
 from flask import Flask, jsonify, request, render_template, send_file, Response, redirect, url_for, session, flash
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -11,113 +14,99 @@ from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from io import BytesIO
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
+logging.basicConfig(level=logging.DEBUG)
 
-USERS_DB = "data/users.db"
+
+class Base(DeclarativeBase):
+    pass
+
+
+db = SQLAlchemy(model_class=Base)
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+
+db.init_app(app)
 
 DATA_FILE = "data/weeks.json"
 
-def init_db():
-    os.makedirs(os.path.dirname(USERS_DB), exist_ok=True)
-    conn = sqlite3.connect(USERS_DB)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            role TEXT DEFAULT 'user',
-            active INTEGER DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS schedules (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            semana INTEGER NOT NULL,
-            atividades TEXT DEFAULT '',
-            unidade_curricular TEXT DEFAULT '',
-            capacidades TEXT DEFAULT '',
-            conhecimentos TEXT DEFAULT '',
-            recursos TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    ''')
-    cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
-    if cursor.fetchone()[0] == 0:
-        admin_password = generate_password_hash("admin123")
-        cursor.execute(
-            "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
-            ("Administrador", "admin@aula.com", admin_password, "admin")
-        )
-    conn.commit()
+
+def init_data():
+    from models import User, Schedule
     
-    cursor.execute("SELECT COUNT(*) FROM schedules")
-    schedule_count = cursor.fetchone()[0]
-    if schedule_count == 0 and os.path.exists(DATA_FILE):
-        cursor.execute("SELECT id FROM users WHERE role = 'admin' LIMIT 1")
-        admin_row = cursor.fetchone()
-        if admin_row:
-            admin_id = admin_row[0]
+    admin = User.query.filter_by(role='admin').first()
+    if not admin:
+        admin = User(
+            name="Administrador",
+            email="admin@aula.com",
+            password_hash=generate_password_hash("admin123"),
+            role="admin",
+            active=True
+        )
+        db.session.add(admin)
+        db.session.commit()
+        
+        if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 weeks = json.load(f)
             for week in weeks:
-                cursor.execute(
-                    "INSERT INTO schedules (user_id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (admin_id, week.get("semana", 0), week.get("atividades", ""), 
-                     week.get("unidadeCurricular", ""), week.get("capacidades", ""),
-                     week.get("conhecimentos", ""), week.get("recursos", ""))
+                schedule = Schedule(
+                    user_id=admin.id,
+                    semana=week.get("semana", 0),
+                    atividades=week.get("atividades", ""),
+                    unidade_curricular=week.get("unidadeCurricular", ""),
+                    capacidades=week.get("capacidades", ""),
+                    conhecimentos=week.get("conhecimentos", ""),
+                    recursos=week.get("recursos", "")
                 )
-            conn.commit()
-    conn.close()
+                db.session.add(schedule)
+            db.session.commit()
 
-def get_db():
-    conn = sqlite3.connect(USERS_DB)
-    conn.row_factory = sqlite3.Row
-    return conn
+
+with app.app_context():
+    import models
+    db.create_all()
+    init_data()
+
 
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.path.startswith('/api/'):
-                return jsonify({"error": "Não autorizado"}), 401
+                return jsonify({"error": "Nao autorizado"}), 401
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
 
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.path.startswith('/api/'):
-                return jsonify({"error": "Não autorizado"}), 401
+                return jsonify({"error": "Nao autorizado"}), 401
             return redirect(url_for('login'))
         if session.get('user_role') != 'admin':
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.path.startswith('/api/'):
                 return jsonify({"error": "Acesso negado"}), 403
-            flash("Acesso negado. Apenas administradores podem acessar esta área.", "error")
+            flash("Acesso negado. Apenas administradores podem acessar esta area.", "error")
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
 
-def load_weeks_for_user(user_id):
-    conn = get_db()
-    rows = conn.execute(
-        "SELECT id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos FROM schedules WHERE user_id = ? ORDER BY semana",
-        (user_id,)
-    ).fetchall()
-    conn.close()
-    return [{"id": r["id"], "semana": r["semana"], "atividades": r["atividades"], 
-             "unidadeCurricular": r["unidade_curricular"], "capacidades": r["capacidades"],
-             "conhecimentos": r["conhecimentos"], "recursos": r["recursos"]} for r in rows]
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    from models import User
+    
     if 'user_id' in session:
         return redirect(url_for('index'))
     
@@ -129,53 +118,83 @@ def login():
             flash("Por favor, preencha todos os campos.", "error")
             return render_template("login.html")
         
-        conn = get_db()
-        user = conn.execute("SELECT * FROM users WHERE email = ? AND active = 1", (email,)).fetchone()
-        conn.close()
+        user = User.query.filter_by(email=email, active=True).first()
         
-        if user and check_password_hash(user["password_hash"], password):
-            session['user_id'] = user["id"]
-            session['user_name'] = user["name"]
-            session['user_email'] = user["email"]
-            session['user_role'] = user["role"]
-            flash(f"Bem-vindo, {user['name']}!", "success")
+        if user and check_password_hash(user.password_hash, password):
+            session['user_id'] = user.id
+            session['user_name'] = user.name
+            session['user_email'] = user.email
+            session['user_role'] = user.role
+            flash(f"Bem-vindo, {user.name}!", "success")
             return redirect(url_for('index'))
         else:
             flash("Email ou senha incorretos.", "error")
     
     return render_template("login.html")
 
+
 @app.route("/logout")
 def logout():
     session.clear()
-    flash("Você saiu do sistema.", "info")
+    flash("Voce saiu do sistema.", "info")
     return redirect(url_for('login'))
+
 
 @app.route("/")
 @login_required
 def index():
     return render_template("index.html", user=session)
 
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    from models import Schedule
+    
+    user_id = session['user_id']
+    schedules = Schedule.query.filter_by(user_id=user_id).order_by(Schedule.semana).all()
+    
+    weeks = [s.to_dict() for s in schedules]
+    
+    unidades = set()
+    recursos_set = set()
+    for s in schedules:
+        if s.unidade_curricular:
+            unidades.add(s.unidade_curricular)
+        if s.recursos:
+            for r in s.recursos.split(','):
+                recursos_set.add(r.strip())
+    
+    return render_template("dashboard.html", 
+                          user=session, 
+                          weeks=weeks,
+                          unidades=list(unidades),
+                          recursos=list(recursos_set))
+
+
 @app.route("/admin")
 @admin_required
 def admin_panel():
     return render_template("admin.html", user=session)
 
+
 @app.route("/api/users", methods=["GET"])
 @admin_required
 def get_users():
-    conn = get_db()
-    users = conn.execute("SELECT id, name, email, role, active, created_at FROM users ORDER BY id").fetchall()
-    conn.close()
-    return jsonify([dict(u) for u in users])
+    from models import User
+    users = User.query.order_by(User.id).all()
+    return jsonify([u.to_dict() for u in users])
+
 
 @app.route("/api/users", methods=["POST"])
 @admin_required
 def add_user():
+    from models import User
+    
     data = request.get_json()
     
     if not data:
-        return jsonify({"error": "Dados inválidos"}), 400
+        return jsonify({"error": "Dados invalidos"}), 400
     
     name = data.get("name", "").strip()
     email = data.get("email", "").strip()
@@ -183,197 +202,192 @@ def add_user():
     role = data.get("role", "user")
     
     if not name or not email or not password:
-        return jsonify({"error": "Nome, email e senha são obrigatórios"}), 400
+        return jsonify({"error": "Nome, email e senha sao obrigatorios"}), 400
     
     if role not in ["user", "admin"]:
         role = "user"
     
-    conn = get_db()
-    try:
-        cursor = conn.execute(
-            "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
-            (name, email, generate_password_hash(password), role)
-        )
-        conn.commit()
-        user_id = cursor.lastrowid
-        user = conn.execute("SELECT id, name, email, role, active, created_at FROM users WHERE id = ?", (user_id,)).fetchone()
-        conn.close()
-        return jsonify(dict(user)), 201
-    except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({"error": "Email já cadastrado"}), 400
+    existing = User.query.filter_by(email=email).first()
+    if existing:
+        return jsonify({"error": "Email ja cadastrado"}), 400
+    
+    user = User(
+        name=name,
+        email=email,
+        password_hash=generate_password_hash(password),
+        role=role,
+        active=True
+    )
+    db.session.add(user)
+    db.session.commit()
+    
+    return jsonify(user.to_dict()), 201
+
 
 @app.route("/api/users/<int:user_id>", methods=["PUT"])
 @admin_required
 def update_user(user_id):
+    from models import User
+    
     data = request.get_json()
     
     if not data:
-        return jsonify({"error": "Dados inválidos"}), 400
+        return jsonify({"error": "Dados invalidos"}), 400
     
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    user = User.query.get(user_id)
     
     if not user:
-        conn.close()
-        return jsonify({"error": "Usuário não encontrado"}), 404
+        return jsonify({"error": "Usuario nao encontrado"}), 404
     
-    name = data.get("name", user["name"]).strip()
-    email = data.get("email", user["email"]).strip()
-    role = data.get("role", user["role"])
-    active = data.get("active", user["active"])
+    user.name = data.get("name", user.name).strip()
+    email = data.get("email", user.email).strip()
+    role = data.get("role", user.role)
+    active = data.get("active", user.active)
     
     if role not in ["user", "admin"]:
-        role = user["role"]
+        role = user.role
     
-    try:
-        if "password" in data and data["password"]:
-            conn.execute(
-                "UPDATE users SET name = ?, email = ?, password_hash = ?, role = ?, active = ? WHERE id = ?",
-                (name, email, generate_password_hash(data["password"]), role, active, user_id)
-            )
-        else:
-            conn.execute(
-                "UPDATE users SET name = ?, email = ?, role = ?, active = ? WHERE id = ?",
-                (name, email, role, active, user_id)
-            )
-        conn.commit()
-        updated_user = conn.execute("SELECT id, name, email, role, active, created_at FROM users WHERE id = ?", (user_id,)).fetchone()
-        conn.close()
-        return jsonify(dict(updated_user))
-    except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({"error": "Email já cadastrado"}), 400
+    if email != user.email:
+        existing = User.query.filter_by(email=email).first()
+        if existing:
+            return jsonify({"error": "Email ja cadastrado"}), 400
+        user.email = email
+    
+    user.role = role
+    user.active = active
+    
+    if "password" in data and data["password"]:
+        user.password_hash = generate_password_hash(data["password"])
+    
+    db.session.commit()
+    
+    return jsonify(user.to_dict())
+
 
 @app.route("/api/users/<int:user_id>", methods=["DELETE"])
 @admin_required
 def delete_user(user_id):
-    if session.get('user_id') == user_id:
-        return jsonify({"error": "Você não pode excluir sua própria conta"}), 400
+    from models import User
     
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if session.get('user_id') == user_id:
+        return jsonify({"error": "Voce nao pode excluir sua propria conta"}), 400
+    
+    user = User.query.get(user_id)
     
     if not user:
-        conn.close()
-        return jsonify({"error": "Usuário não encontrado"}), 404
+        return jsonify({"error": "Usuario nao encontrado"}), 404
     
-    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
+    db.session.delete(user)
+    db.session.commit()
     
-    return jsonify({"message": "Usuário excluído com sucesso"})
+    return jsonify({"message": "Usuario excluido com sucesso"})
+
 
 @app.route("/api/weeks", methods=["GET"])
 @login_required
 def get_weeks():
+    from models import Schedule
+    
     user_id = session['user_id']
-    weeks = load_weeks_for_user(user_id)
-    return jsonify(weeks)
+    schedules = Schedule.query.filter_by(user_id=user_id).order_by(Schedule.semana).all()
+    return jsonify([s.to_dict() for s in schedules])
+
 
 @app.route("/api/weeks/<int:week_id>", methods=["GET"])
 @login_required
 def get_week(week_id):
+    from models import Schedule
+    
     user_id = session['user_id']
-    conn = get_db()
-    row = conn.execute(
-        "SELECT id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos FROM schedules WHERE user_id = ? AND semana = ?",
-        (user_id, week_id)
-    ).fetchone()
-    conn.close()
-    if row:
-        return jsonify({"id": row["id"], "semana": row["semana"], "atividades": row["atividades"],
-                        "unidadeCurricular": row["unidade_curricular"], "capacidades": row["capacidades"],
-                        "conhecimentos": row["conhecimentos"], "recursos": row["recursos"]})
-    return jsonify({"error": "Semana não encontrada"}), 404
+    schedule = Schedule.query.filter_by(user_id=user_id, semana=week_id).first()
+    
+    if schedule:
+        return jsonify(schedule.to_dict())
+    return jsonify({"error": "Semana nao encontrada"}), 404
+
 
 @app.route("/api/weeks", methods=["POST"])
 @login_required
 def add_week():
+    from models import Schedule
+    
     user_id = session['user_id']
     data = request.get_json()
     
     if not data:
-        return jsonify({"error": "Dados inválidos"}), 400
+        return jsonify({"error": "Dados invalidos"}), 400
     
-    conn = get_db()
-    max_row = conn.execute("SELECT MAX(semana) as max_semana FROM schedules WHERE user_id = ?", (user_id,)).fetchone()
-    max_semana = max_row["max_semana"] if max_row["max_semana"] else 0
+    max_semana = db.session.query(db.func.max(Schedule.semana)).filter_by(user_id=user_id).scalar() or 0
     
-    semana = data.get("semana", max_semana + 1)
-    atividades = data.get("atividades", "")
-    unidade_curricular = data.get("unidadeCurricular", "")
-    capacidades = data.get("capacidades", "")
-    conhecimentos = data.get("conhecimentos", "")
-    recursos = data.get("recursos", "")
-    
-    cursor = conn.execute(
-        "INSERT INTO schedules (user_id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (user_id, semana, atividades, unidade_curricular, capacidades, conhecimentos, recursos)
+    schedule = Schedule(
+        user_id=user_id,
+        semana=data.get("semana", max_semana + 1),
+        atividades=data.get("atividades", ""),
+        unidade_curricular=data.get("unidadeCurricular", ""),
+        capacidades=data.get("capacidades", ""),
+        conhecimentos=data.get("conhecimentos", ""),
+        recursos=data.get("recursos", "")
     )
-    conn.commit()
-    new_id = cursor.lastrowid
-    conn.close()
     
-    return jsonify({"id": new_id, "semana": semana, "atividades": atividades, 
-                    "unidadeCurricular": unidade_curricular, "capacidades": capacidades,
-                    "conhecimentos": conhecimentos, "recursos": recursos}), 201
+    db.session.add(schedule)
+    db.session.commit()
+    
+    return jsonify(schedule.to_dict()), 201
+
 
 @app.route("/api/weeks/<int:week_id>", methods=["PUT"])
 @login_required
 def update_week(week_id):
+    from models import Schedule
+    
     user_id = session['user_id']
     data = request.get_json()
     
     if not data:
-        return jsonify({"error": "Dados inválidos"}), 400
+        return jsonify({"error": "Dados invalidos"}), 400
     
-    conn = get_db()
-    row = conn.execute("SELECT * FROM schedules WHERE user_id = ? AND semana = ?", (user_id, week_id)).fetchone()
+    schedule = Schedule.query.filter_by(user_id=user_id, semana=week_id).first()
     
-    if not row:
-        conn.close()
-        return jsonify({"error": "Semana não encontrada"}), 404
+    if not schedule:
+        return jsonify({"error": "Semana nao encontrada"}), 404
     
-    atividades = data.get("atividades", row["atividades"])
-    unidade_curricular = data.get("unidadeCurricular", row["unidade_curricular"])
-    capacidades = data.get("capacidades", row["capacidades"])
-    conhecimentos = data.get("conhecimentos", row["conhecimentos"])
-    recursos = data.get("recursos", row["recursos"])
+    schedule.atividades = data.get("atividades", schedule.atividades)
+    schedule.unidade_curricular = data.get("unidadeCurricular", schedule.unidade_curricular)
+    schedule.capacidades = data.get("capacidades", schedule.capacidades)
+    schedule.conhecimentos = data.get("conhecimentos", schedule.conhecimentos)
+    schedule.recursos = data.get("recursos", schedule.recursos)
     
-    conn.execute(
-        "UPDATE schedules SET atividades = ?, unidade_curricular = ?, capacidades = ?, conhecimentos = ?, recursos = ? WHERE user_id = ? AND semana = ?",
-        (atividades, unidade_curricular, capacidades, conhecimentos, recursos, user_id, week_id)
-    )
-    conn.commit()
-    conn.close()
+    db.session.commit()
     
-    return jsonify({"id": row["id"], "semana": week_id, "atividades": atividades,
-                    "unidadeCurricular": unidade_curricular, "capacidades": capacidades,
-                    "conhecimentos": conhecimentos, "recursos": recursos})
+    return jsonify(schedule.to_dict())
+
 
 @app.route("/api/weeks/<int:week_id>", methods=["DELETE"])
 @login_required
 def delete_week(week_id):
+    from models import Schedule
+    
     user_id = session['user_id']
-    conn = get_db()
-    row = conn.execute("SELECT * FROM schedules WHERE user_id = ? AND semana = ?", (user_id, week_id)).fetchone()
+    schedule = Schedule.query.filter_by(user_id=user_id, semana=week_id).first()
     
-    if not row:
-        conn.close()
-        return jsonify({"error": "Semana não encontrada"}), 404
+    if not schedule:
+        return jsonify({"error": "Semana nao encontrada"}), 404
     
-    conn.execute("DELETE FROM schedules WHERE user_id = ? AND semana = ?", (user_id, week_id))
-    conn.commit()
-    conn.close()
+    db.session.delete(schedule)
+    db.session.commit()
     
-    return jsonify({"message": "Semana excluída com sucesso"})
+    return jsonify({"message": "Semana excluida com sucesso"})
+
 
 @app.route("/api/export/json")
 @login_required
 def export_json():
+    from models import Schedule
+    
     user_id = session['user_id']
-    weeks = load_weeks_for_user(user_id)
+    schedules = Schedule.query.filter_by(user_id=user_id).order_by(Schedule.semana).all()
+    weeks = [s.to_dict() for s in schedules]
+    
     response = Response(
         json.dumps(weeks, ensure_ascii=False, indent=2),
         mimetype="application/json",
@@ -381,11 +395,15 @@ def export_json():
     )
     return response
 
+
 @app.route("/api/export/pdf")
 @login_required
 def export_pdf():
+    from models import Schedule
+    
     user_id = session['user_id']
-    weeks = load_weeks_for_user(user_id)
+    schedules = Schedule.query.filter_by(user_id=user_id).order_by(Schedule.semana).all()
+    weeks = [s.to_dict() for s in schedules]
     
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -465,6 +483,7 @@ def export_pdf():
         download_name='cronograma.pdf'
     )
 
+
 @app.after_request
 def add_header(response):
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -472,7 +491,6 @@ def add_header(response):
     response.headers['Expires'] = '0'
     return response
 
-init_db()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
