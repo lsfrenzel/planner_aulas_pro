@@ -92,6 +92,10 @@ O projeto está configurado para deploy no Railway:
 - email-validator 2.3.0
 
 ## Recent Changes
+- 2025-12-12: Implementado fluxo turma-primeiro (usuario deve criar turma antes de semanas)
+- 2025-12-12: APIs de semanas agora exigem turma_id
+- 2025-12-12: Interface atualizada com seletor de turma na sidebar
+- 2025-12-12: Migracao automatica cria turma padrao para schedules orfaos
 - 2025-12-12: Corrigido relacionamento entre Schedule e Turma para evitar erros de FK
 - 2025-12-12: Removido cascade delete para turmas (turmas agora são opcionais)
 - 2025-12-12: Adicionado dashboard com visualização em tabela de todas as semanas

@@ -428,7 +428,7 @@ def get_week(week_id):
     from models import Schedule
     
     user_id = session['user_id']
-    schedule = Schedule.query.filter_by(user_id=user_id, semana=week_id).first()
+    schedule = Schedule.query.filter_by(id=week_id, user_id=user_id).first()
     
     if schedule:
         return jsonify(schedule.to_dict())
@@ -484,7 +484,7 @@ def update_week(week_id):
     if not data:
         return jsonify({"error": "Dados invalidos"}), 400
     
-    schedule = Schedule.query.filter_by(user_id=user_id, semana=week_id).first()
+    schedule = Schedule.query.filter_by(id=week_id, user_id=user_id).first()
     
     if not schedule:
         return jsonify({"error": "Semana nao encontrada"}), 404
@@ -506,7 +506,7 @@ def delete_week(week_id):
     from models import Schedule
     
     user_id = session['user_id']
-    schedule = Schedule.query.filter_by(user_id=user_id, semana=week_id).first()
+    schedule = Schedule.query.filter_by(id=week_id, user_id=user_id).first()
     
     if not schedule:
         return jsonify({"error": "Semana nao encontrada"}), 404
@@ -523,7 +523,7 @@ def toggle_week_complete(week_id):
     from models import Schedule
     
     user_id = session['user_id']
-    schedule = Schedule.query.filter_by(user_id=user_id, semana=week_id).first()
+    schedule = Schedule.query.filter_by(id=week_id, user_id=user_id).first()
     
     if not schedule:
         return jsonify({"error": "Semana nao encontrada"}), 404
