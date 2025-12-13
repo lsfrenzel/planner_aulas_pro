@@ -35,6 +35,11 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - `GET /api/export/pdf` - Exporta cronograma em PDF
 - `GET /api/export/xlsx` - Exporta cronograma em Excel (XLSX)
 
+#### Importacao de Cronograma
+- `GET /importar` - Pagina de importacao de cronograma
+- `GET /api/cronograma/template` - Baixa template Excel para preenchimento
+- `POST /api/cronograma/importar` - Importa planilha preenchida para uma turma
+
 #### Rotas de Perfil
 - `GET /perfil` - Pagina de edicao de perfil
 - `POST /perfil/atualizar` - Atualiza nome, cargo e foto
@@ -46,6 +51,7 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - **templates/login.html**: Tela de login
 - **templates/admin.html**: Painel de gerenciamento de usuários
 - **templates/perfil.html**: Pagina de edicao de perfil do usuario
+- **templates/importar.html**: Pagina de importacao de cronograma via planilha
 - **static/js/app.js**: JavaScript para interatividade
 - **static/css/style.css**: Estilos customizados
 - **static/uploads/profiles/**: Pasta para fotos de perfil dos usuarios
@@ -69,6 +75,7 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - Interface responsiva
 - Sidebar navegável
 - Estatísticas (total semanas, unidades curriculares, recursos)
+- Importacao de cronograma em lote via planilha Excel (template baixavel)
 
 ## Credenciais Padrão
 - **Email**: admin@aula.com
@@ -102,6 +109,10 @@ O projeto está configurado para deploy no Railway:
 - email-validator 2.3.0
 
 ## Recent Changes
+- 2025-12-13: Adicionada funcionalidade de Importar Cronograma via planilha Excel
+- 2025-12-13: Template Excel baixavel com instrucoes e exemplos de preenchimento
+- 2025-12-13: Importacao automatica de semanas para uma turma selecionada
+- 2025-12-13: Links para importacao adicionados na sidebar e pagina de turmas
 - 2025-12-12: PDF e Excel agora incluem resumo completo de todas as capacidades desenvolvidas
 - 2025-12-12: Relatorios mostram status de conclusao (Concluida/Pendente) para cada semana
 - 2025-12-12: Capacidades marcadas com [OK] ou [ ] nos relatorios para indicar progresso
