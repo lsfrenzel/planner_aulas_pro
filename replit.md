@@ -73,6 +73,11 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - Busca por texto
 - Exportação para JSON, PDF e Excel (XLSX)
 - Interface responsiva
+- **Turmas Encerradas**: Sistema de conclusao de turmas com animacao de celebracao
+  - Verifica automaticamente se todas semanas e capacidades estao concluidas
+  - Animacao de confete ao encerrar turma
+  - Secao separada para turmas encerradas com visual diferenciado
+  - Opcao de restaurar turmas encerradas para reabrir
 - Sidebar navegável
 - Estatísticas (total semanas, unidades curriculares, recursos)
 - Importacao de cronograma em lote via planilha Excel (template baixavel)
