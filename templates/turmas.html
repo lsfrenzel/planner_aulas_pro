@@ -115,6 +115,26 @@
             </div>
         </div>
 
+        <div class="mb-6">
+            <div class="flex flex-wrap gap-2">
+                <button id="filter-all" onclick="setFilter('all')" class="px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium bg-primary-500 text-white">
+                    <i class="fas fa-list"></i>
+                    Todas
+                    <span id="count-all" class="bg-white/20 px-2 py-0.5 rounded-full text-xs">0</span>
+                </button>
+                <button id="filter-abertas" onclick="setFilter('abertas')" class="px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600">
+                    <i class="fas fa-book-open"></i>
+                    Abertas
+                    <span id="count-abertas" class="bg-gray-300 dark:bg-gray-600 px-2 py-0.5 rounded-full text-xs">0</span>
+                </button>
+                <button id="filter-encerradas" onclick="setFilter('encerradas')" class="px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600">
+                    <i class="fas fa-trophy"></i>
+                    Encerradas
+                    <span id="count-encerradas" class="bg-gray-300 dark:bg-gray-600 px-2 py-0.5 rounded-full text-xs">0</span>
+                </button>
+            </div>
+        </div>
+
         <div id="turmas-list" class="grid gap-4">
         </div>
 
@@ -130,20 +150,6 @@
             </button>
         </div>
 
-        <div id="turmas-encerradas-section" class="hidden mt-12">
-            <div class="mb-6">
-                <div class="flex items-center gap-3 mb-2">
-                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                        <i class="fas fa-trophy text-white"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Turmas Encerradas</h2>
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">Turmas que foram concluidas com sucesso</p>
-                    </div>
-                </div>
-            </div>
-            <div id="turmas-encerradas-list" class="grid gap-4"></div>
-        </div>
     </main>
 
     <div id="celebration-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] hidden">
@@ -294,6 +300,9 @@
 
     <script>
         let selectedColor = 'blue';
+        let currentFilter = 'all';
+        let allTurmasAbertas = [];
+        let allTurmasEncerradas = [];
         
         function toggleTheme() {
             document.documentElement.classList.toggle('dark');
@@ -302,6 +311,66 @@
 
         if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+                btn.classList.remove('bg-primary-500', 'text-white');
+                btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
+            });
+            
+            const activeBtn = document.getElementById(`filter-${filter}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
+                activeBtn.classList.add('bg-primary-500', 'text-white');
+            }
+            
+            renderFilteredTurmas();
+        }
+
+        function updateFilterCounts() {
+            document.getElementById('count-all').textContent = allTurmasAbertas.length + allTurmasEncerradas.length;
+            document.getElementById('count-abertas').textContent = allTurmasAbertas.length;
+            document.getElementById('count-encerradas').textContent = allTurmasEncerradas.length;
+        }
+
+        function renderFilteredTurmas() {
+            const list = document.getElementById('turmas-list');
+            const emptyState = document.getElementById('empty-state');
+            
+            let turmasToShow = [];
+            
+            if (currentFilter === 'all') {
+                turmasToShow = [
+                    ...allTurmasAbertas.map(t => ({ ...t, isEncerrada: false })),
+                    ...allTurmasEncerradas.map(t => ({ ...t, isEncerrada: true }))
+                ];
+            } else if (currentFilter === 'abertas') {
+                turmasToShow = allTurmasAbertas.map(t => ({ ...t, isEncerrada: false }));
+            } else if (currentFilter === 'encerradas') {
+                turmasToShow = allTurmasEncerradas.map(t => ({ ...t, isEncerrada: true }));
+            }
+            
+            if (turmasToShow.length === 0) {
+                list.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                
+                if (currentFilter === 'encerradas') {
+                    emptyState.querySelector('h3').textContent = 'Nenhuma turma encerrada';
+                    emptyState.querySelector('p').textContent = 'As turmas concluidas aparecerao aqui';
+                } else if (currentFilter === 'abertas') {
+                    emptyState.querySelector('h3').textContent = 'Nenhuma turma aberta';
+                    emptyState.querySelector('p').textContent = 'Crie uma nova turma para comecar';
+                } else {
+                    emptyState.querySelector('h3').textContent = 'Nenhuma turma cadastrada';
+                    emptyState.querySelector('p').textContent = 'Comece criando sua primeira turma para planejar as aulas';
+                }
+            } else {
+                emptyState.classList.add('hidden');
+                list.innerHTML = turmasToShow.map(turma => renderTurmaCard(turma, turma.isEncerrada)).join('');
+            }
         }
 
         function selectColor(color) {
@@ -386,40 +455,21 @@
             window.location.href = '/';
         }
 
-        function loadTurmas() {
-            fetch('/api/turmas')
-                .then(response => response.json())
-                .then(turmas => {
-                    const list = document.getElementById('turmas-list');
-                    const emptyState = document.getElementById('empty-state');
-                    
-                    if (turmas.length === 0) {
-                        list.innerHTML = '';
-                        emptyState.classList.remove('hidden');
-                    } else {
-                        emptyState.classList.add('hidden');
-                        list.innerHTML = turmas.map(turma => renderTurmaCard(turma, false)).join('');
-                    }
-                    
-                    loadTurmasEncerradas();
-                });
-        }
-
-        function loadTurmasEncerradas() {
-            fetch('/api/turmas-encerradas')
-                .then(response => response.json())
-                .then(turmas => {
-                    const section = document.getElementById('turmas-encerradas-section');
-                    const list = document.getElementById('turmas-encerradas-list');
-                    
-                    if (turmas.length === 0) {
-                        section.classList.add('hidden');
-                        return;
-                    }
-                    
-                    section.classList.remove('hidden');
-                    list.innerHTML = turmas.map(turma => renderTurmaCard(turma, true)).join('');
-                });
+        async function loadTurmas() {
+            try {
+                const [abertasResponse, encerradasResponse] = await Promise.all([
+                    fetch('/api/turmas'),
+                    fetch('/api/turmas-encerradas')
+                ]);
+                
+                allTurmasAbertas = await abertasResponse.json();
+                allTurmasEncerradas = await encerradasResponse.json();
+                
+                updateFilterCounts();
+                renderFilteredTurmas();
+            } catch (error) {
+                console.error('Erro ao carregar turmas:', error);
+            }
         }
 
         function renderTurmaCard(turma, isEncerrada) {

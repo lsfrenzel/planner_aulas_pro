@@ -44,12 +44,28 @@ document.addEventListener('click', (e) => {
 
 async function loadTurmas() {
     try {
-        const response = await fetch('/api/turmas');
-        turmas = await response.json();
+        const [abertasResponse, encerradasResponse] = await Promise.all([
+            fetch('/api/turmas'),
+            fetch('/api/turmas-encerradas')
+        ]);
+        
+        const turmasAbertas = await abertasResponse.json();
+        const turmasEncerradas = await encerradasResponse.json();
+        
+        turmas = [
+            ...turmasAbertas.map(t => ({ ...t, isEncerrada: false })),
+            ...turmasEncerradas.map(t => ({ ...t, isEncerrada: true }))
+        ];
         
         const select = document.getElementById('turmaSelect');
         select.innerHTML = '<option value="">Selecione uma turma...</option>' +
-            turmas.map(t => `<option value="${t.id}">${t.nome}</option>`).join('');
+            '<optgroup label="Turmas Abertas">' +
+            turmasAbertas.map(t => `<option value="${t.id}">${t.nome}</option>`).join('') +
+            '</optgroup>' +
+            (turmasEncerradas.length > 0 ? 
+                '<optgroup label="Turmas Encerradas">' +
+                turmasEncerradas.map(t => `<option value="${t.id}">${t.nome} (Encerrada)</option>`).join('') +
+                '</optgroup>' : '');
         
         if (turmas.length === 0) {
             showNoTurmaState();
@@ -119,7 +135,12 @@ async function selectTurma(turmaId) {
     document.getElementById('selectTurmaMessage').classList.add('hidden');
     document.getElementById('selectTurmaMessage').classList.remove('flex');
     
-    document.getElementById('turmaName').textContent = currentTurma.nome;
+    const turmaNameEl = document.getElementById('turmaName');
+    if (currentTurma.isEncerrada || currentTurma.concluida) {
+        turmaNameEl.innerHTML = `${currentTurma.nome} <span class="ml-2 px-2 py-0.5 bg-emerald-500 text-white text-xs rounded-full font-medium"><i class="fas fa-trophy mr-1"></i>Encerrada</span>`;
+    } else {
+        turmaNameEl.textContent = currentTurma.nome;
+    }
     
     updateExportLinks();
     await loadWeeks();

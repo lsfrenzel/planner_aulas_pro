@@ -524,6 +524,19 @@ def get_turmas_encerradas():
     return jsonify([t.to_dict() for t in turmas])
 
 
+@app.route("/api/turmas/<int:turma_id>", methods=["GET"])
+@login_required
+def get_turma(turma_id):
+    from models import Turma
+    user_id = session['user_id']
+    turma = Turma.query.filter_by(id=turma_id, user_id=user_id, active=True).first()
+    
+    if not turma:
+        return jsonify({"error": "Turma nao encontrada"}), 404
+    
+    return jsonify(turma.to_dict())
+
+
 @app.route("/api/turmas/<int:turma_id>/encerrar", methods=["POST"])
 @login_required
 def encerrar_turma(turma_id):
