@@ -44,28 +44,14 @@ document.addEventListener('click', (e) => {
 
 async function loadTurmas() {
     try {
-        const [abertasResponse, encerradasResponse] = await Promise.all([
-            fetch('/api/turmas'),
-            fetch('/api/turmas-encerradas')
-        ]);
+        const response = await fetch('/api/turmas');
+        const turmasAbertas = await response.json();
         
-        const turmasAbertas = await abertasResponse.json();
-        const turmasEncerradas = await encerradasResponse.json();
-        
-        turmas = [
-            ...turmasAbertas.map(t => ({ ...t, isEncerrada: false })),
-            ...turmasEncerradas.map(t => ({ ...t, isEncerrada: true }))
-        ];
+        turmas = turmasAbertas.map(t => ({ ...t, isEncerrada: false }));
         
         const select = document.getElementById('turmaSelect');
         select.innerHTML = '<option value="">Selecione uma turma...</option>' +
-            '<optgroup label="Turmas Abertas">' +
-            turmasAbertas.map(t => `<option value="${t.id}">${t.nome}</option>`).join('') +
-            '</optgroup>' +
-            (turmasEncerradas.length > 0 ? 
-                '<optgroup label="Turmas Encerradas">' +
-                turmasEncerradas.map(t => `<option value="${t.id}">${t.nome} (Encerrada)</option>`).join('') +
-                '</optgroup>' : '');
+            turmasAbertas.map(t => `<option value="${t.id}">${t.nome}</option>`).join('');
         
         if (turmas.length === 0) {
             showNoTurmaState();
