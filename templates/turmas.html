@@ -129,7 +129,61 @@
                 Criar Turma
             </button>
         </div>
+
+        <div id="turmas-encerradas-section" class="hidden mt-12">
+            <div class="mb-6">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <i class="fas fa-trophy text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Turmas Encerradas</h2>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">Turmas que foram concluidas com sucesso</p>
+                    </div>
+                </div>
+            </div>
+            <div id="turmas-encerradas-list" class="grid gap-4"></div>
+        </div>
     </main>
+
+    <div id="celebration-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] hidden">
+        <div class="celebration-content bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md mx-4 text-center transform scale-0 transition-transform duration-500">
+            <div class="celebration-icon w-24 h-24 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+                <i class="fas fa-trophy text-white text-4xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Parabens!</h2>
+            <p class="text-lg text-emerald-600 dark:text-emerald-400 font-semibold mb-4" id="celebration-turma-name"></p>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">Todas as semanas e capacidades foram concluidas com sucesso! A turma foi movida para a area de Turmas Encerradas.</p>
+            <button onclick="closeCelebration()" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl transition-all font-semibold shadow-lg shadow-emerald-500/30">
+                <i class="fas fa-check mr-2"></i>
+                Continuar
+            </button>
+        </div>
+        <div id="confetti-container" class="fixed inset-0 pointer-events-none overflow-hidden"></div>
+    </div>
+
+    <style>
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: confetti-fall 3s linear forwards;
+        }
+        @keyframes slide-out-right {
+            0% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(100%); opacity: 0; }
+        }
+        @keyframes slide-in-left {
+            0% { transform: translateX(-100%); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        .slide-out { animation: slide-out-right 0.5s ease-in-out forwards; }
+        .slide-in { animation: slide-in-left 0.5s ease-in-out forwards; }
+    </style>
 
     <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden overflow-y-auto">
         <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-lg mx-4 my-8 shadow-xl">
@@ -342,53 +396,207 @@
                     if (turmas.length === 0) {
                         list.innerHTML = '';
                         emptyState.classList.remove('hidden');
+                    } else {
+                        emptyState.classList.add('hidden');
+                        list.innerHTML = turmas.map(turma => renderTurmaCard(turma, false)).join('');
+                    }
+                    
+                    loadTurmasEncerradas();
+                });
+        }
+
+        function loadTurmasEncerradas() {
+            fetch('/api/turmas-encerradas')
+                .then(response => response.json())
+                .then(turmas => {
+                    const section = document.getElementById('turmas-encerradas-section');
+                    const list = document.getElementById('turmas-encerradas-list');
+                    
+                    if (turmas.length === 0) {
+                        section.classList.add('hidden');
                         return;
                     }
                     
-                    emptyState.classList.add('hidden');
-                    list.innerHTML = turmas.map(turma => {
-                        const diasMap = {'seg': 'Seg', 'ter': 'Ter', 'qua': 'Qua', 'qui': 'Qui', 'sex': 'Sex', 'sab': 'Sab'};
-                        const diasFormatted = turma.dias_aula ? turma.dias_aula.split(',').map(d => diasMap[d.trim()] || d).join(', ') : '';
-                        const horarioFormatted = turma.horario_inicio && turma.horario_fim ? `${turma.horario_inicio} - ${turma.horario_fim}` : '';
-                        const formatDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '';
-                        const dataFormatted = turma.data_inicio || turma.data_fim ? `${formatDate(turma.data_inicio)} a ${formatDate(turma.data_fim)}` : '';
-                        
-                        return `
-                        <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                            <div class="flex items-start gap-4">
-                                <div class="w-14 h-14 ${getColorClass(turma.cor)} rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <i class="fas fa-users text-white text-2xl"></i>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white truncate">${turma.nome}</h3>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 truncate">${turma.descricao || 'Sem descricao'}</p>
-                                    <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                        <span>
-                                            <i class="fas fa-calendar-week mr-1"></i>
-                                            ${turma.schedule_count || 0} semanas
-                                        </span>
-                                        ${turma.carga_horaria ? `<span><i class="fas fa-clock mr-1"></i>${turma.carga_horaria}h</span>` : ''}
-                                        ${diasFormatted ? `<span><i class="fas fa-calendar-day mr-1"></i>${diasFormatted}</span>` : ''}
-                                        ${horarioFormatted ? `<span><i class="fas fa-hourglass-half mr-1"></i>${horarioFormatted}</span>` : ''}
-                                    </div>
-                                    ${dataFormatted ? `<div class="mt-1 text-xs text-gray-400 dark:text-gray-500"><i class="fas fa-calendar-alt mr-1"></i>${dataFormatted}</div>` : ''}
-                                </div>
-                                <div class="flex flex-col sm:flex-row gap-2">
-                                    <button onclick="goToSchedule(${turma.id})" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm">
-                                        <i class="fas fa-calendar-alt"></i>
-                                        <span class="hidden sm:inline">Cronograma</span>
-                                    </button>
-                                    <button onclick='openModal(${JSON.stringify(turma)})' class="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Editar">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="deleteTurma(${turma.id})" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Excluir">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `}).join('');
+                    section.classList.remove('hidden');
+                    list.innerHTML = turmas.map(turma => renderTurmaCard(turma, true)).join('');
                 });
+        }
+
+        function renderTurmaCard(turma, isEncerrada) {
+            const diasMap = {'seg': 'Seg', 'ter': 'Ter', 'qua': 'Qua', 'qui': 'Qui', 'sex': 'Sex', 'sab': 'Sab'};
+            const diasFormatted = turma.dias_aula ? turma.dias_aula.split(',').map(d => diasMap[d.trim()] || d).join(', ') : '';
+            const horarioFormatted = turma.horario_inicio && turma.horario_fim ? `${turma.horario_inicio} - ${turma.horario_fim}` : '';
+            const formatDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+            const dataFormatted = turma.data_inicio || turma.data_fim ? `${formatDate(turma.data_inicio)} a ${formatDate(turma.data_fim)}` : '';
+            const dataConclusao = turma.data_conclusao ? new Date(turma.data_conclusao).toLocaleDateString('pt-BR') : '';
+            
+            const bgClass = isEncerrada ? 'bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+            const iconBg = isEncerrada ? 'bg-gradient-to-br from-emerald-500 to-teal-600' : getColorClass(turma.cor);
+            const icon = isEncerrada ? 'fa-trophy' : 'fa-users';
+            
+            let buttons = '';
+            if (isEncerrada) {
+                buttons = `
+                    <button onclick="goToSchedule(${turma.id})" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm">
+                        <i class="fas fa-eye"></i>
+                        <span class="hidden sm:inline">Visualizar</span>
+                    </button>
+                    <button onclick="restaurarTurma(${turma.id})" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm" title="Restaurar Turma">
+                        <i class="fas fa-undo"></i>
+                        <span class="hidden sm:inline">Restaurar</span>
+                    </button>
+                    <button onclick='openModal(${JSON.stringify(turma).replace(/'/g, "&#39;")})' class="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteTurma(${turma.id})" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+            } else {
+                buttons = `
+                    <button onclick="goToSchedule(${turma.id})" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span class="hidden sm:inline">Cronograma</span>
+                    </button>
+                    <button onclick="checkEncerrarTurma(${turma.id}, '${turma.nome.replace(/'/g, "\\'")}')" class="p-2 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="Encerrar Turma">
+                        <i class="fas fa-check-double"></i>
+                    </button>
+                    <button onclick='openModal(${JSON.stringify(turma).replace(/'/g, "&#39;")})' class="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteTurma(${turma.id})" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+            }
+            
+            return `
+            <div class="${bgClass} rounded-xl p-5 border hover:shadow-md transition-all" id="turma-card-${turma.id}">
+                <div class="flex items-start gap-4">
+                    <div class="w-14 h-14 ${iconBg} rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <i class="fas ${icon} text-white text-2xl"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white truncate">${turma.nome}</h3>
+                            ${isEncerrada ? '<span class="px-2 py-0.5 bg-emerald-500 text-white text-xs rounded-full font-medium">Concluida</span>' : ''}
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 truncate">${turma.descricao || 'Sem descricao'}</p>
+                        <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span><i class="fas fa-calendar-week mr-1"></i>${turma.schedule_count || 0} semanas</span>
+                            ${turma.carga_horaria ? `<span><i class="fas fa-clock mr-1"></i>${turma.carga_horaria}h</span>` : ''}
+                            ${diasFormatted ? `<span><i class="fas fa-calendar-day mr-1"></i>${diasFormatted}</span>` : ''}
+                            ${horarioFormatted ? `<span><i class="fas fa-hourglass-half mr-1"></i>${horarioFormatted}</span>` : ''}
+                        </div>
+                        ${dataFormatted ? `<div class="mt-1 text-xs text-gray-400 dark:text-gray-500"><i class="fas fa-calendar-alt mr-1"></i>${dataFormatted}</div>` : ''}
+                        ${isEncerrada && dataConclusao ? `<div class="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium"><i class="fas fa-trophy mr-1"></i>Concluida em ${dataConclusao}</div>` : ''}
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        ${buttons}
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        function checkEncerrarTurma(turmaId, turmaNome) {
+            fetch(`/api/turmas/${turmaId}/check-conclusao`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ja_encerrada) {
+                        alert('Esta turma ja esta encerrada.');
+                        return;
+                    }
+                    
+                    if (data.pode_encerrar) {
+                        if (confirm(`Todas as semanas e capacidades estao concluidas!\n\nDeseja encerrar a turma "${turmaNome}"?`)) {
+                            encerrarTurma(turmaId, turmaNome);
+                        }
+                    } else {
+                        const msg = `Ainda nao e possivel encerrar esta turma.\n\n` +
+                            `Progresso atual:\n` +
+                            `- Semanas: ${data.semanas_concluidas}/${data.total_semanas}\n` +
+                            `- Capacidades: ${data.capacidades_concluidas}/${data.total_capacidades}\n\n` +
+                            `${data.motivo}`;
+                        alert(msg);
+                    }
+                });
+        }
+
+        function encerrarTurma(turmaId, turmaNome) {
+            fetch(`/api/turmas/${turmaId}/encerrar`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    const card = document.getElementById(`turma-card-${turmaId}`);
+                    if (card) card.classList.add('slide-out');
+                    
+                    setTimeout(() => {
+                        showCelebration(turmaNome);
+                        loadTurmas();
+                    }, 500);
+                });
+        }
+
+        function restaurarTurma(turmaId) {
+            if (!confirm('Deseja restaurar esta turma? Ela voltara para a lista de turmas ativas.')) return;
+            
+            fetch(`/api/turmas/${turmaId}/restaurar`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    const card = document.getElementById(`turma-card-${turmaId}`);
+                    if (card) card.classList.add('slide-out');
+                    
+                    setTimeout(() => {
+                        loadTurmas();
+                    }, 500);
+                });
+        }
+
+        function showCelebration(turmaNome) {
+            const modal = document.getElementById('celebration-modal');
+            const content = modal.querySelector('.celebration-content');
+            document.getElementById('celebration-turma-name').textContent = turmaNome;
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => content.classList.remove('scale-0'), 50);
+            
+            createConfetti();
+        }
+
+        function closeCelebration() {
+            const modal = document.getElementById('celebration-modal');
+            const content = modal.querySelector('.celebration-content');
+            content.classList.add('scale-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('confetti-container').innerHTML = '';
+            }, 300);
+        }
+
+        function createConfetti() {
+            const container = document.getElementById('confetti-container');
+            const colors = ['#fbbf24', '#34d399', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c'];
+            
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                container.appendChild(confetti);
+            }
         }
 
         function saveTurma(event) {
