@@ -594,6 +594,68 @@ def restaurar_turma(turma_id):
     })
 
 
+@app.route("/api/turmas/<int:turma_id>/duplicar", methods=["POST"])
+@login_required
+def duplicar_turma(turma_id):
+    from models import Turma, Schedule
+    
+    user_id = session['user_id']
+    data = request.get_json() or {}
+    
+    turma_original = Turma.query.filter_by(id=turma_id, user_id=user_id, active=True).first()
+    
+    if not turma_original:
+        return jsonify({"error": "Turma nao encontrada"}), 404
+    
+    novo_nome = data.get("novo_nome", "").strip()
+    if not novo_nome:
+        novo_nome = f"{turma_original.nome} (Copia)"
+    
+    nova_turma = Turma(
+        user_id=user_id,
+        nome=novo_nome,
+        descricao=turma_original.descricao,
+        cor=turma_original.cor,
+        carga_horaria=turma_original.carga_horaria,
+        dias_aula=turma_original.dias_aula,
+        horario_inicio=turma_original.horario_inicio,
+        horario_fim=turma_original.horario_fim,
+        data_inicio=None,
+        data_fim=None,
+        active=True,
+        concluida=False
+    )
+    db.session.add(nova_turma)
+    db.session.flush()
+    
+    schedules_originais = Schedule.query.filter_by(user_id=user_id, turma_id=turma_id).order_by(Schedule.semana).all()
+    
+    schedules_copiados = 0
+    for schedule in schedules_originais:
+        novo_schedule = Schedule(
+            user_id=user_id,
+            turma_id=nova_turma.id,
+            semana=schedule.semana,
+            atividades=schedule.atividades,
+            unidade_curricular=schedule.unidade_curricular,
+            capacidades=schedule.capacidades,
+            capacidades_completed='',
+            conhecimentos=schedule.conhecimentos,
+            recursos=schedule.recursos,
+            completed=False
+        )
+        db.session.add(novo_schedule)
+        schedules_copiados += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        "message": f"Turma duplicada com sucesso! {schedules_copiados} semanas copiadas.",
+        "turma": nova_turma.to_dict(),
+        "schedules_copiados": schedules_copiados
+    }), 201
+
+
 @app.route("/api/turmas/<int:turma_id>/check-conclusao", methods=["GET"])
 @login_required
 def check_turma_conclusao(turma_id):

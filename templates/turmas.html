@@ -600,6 +600,9 @@
                         <i class="fas fa-undo"></i>
                         <span class="hidden sm:inline">Restaurar</span>
                     </button>
+                    <button onclick="openDuplicarModal(${turma.id}, '${turma.nome.replace(/'/g, "\\'")}')" class="p-2 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors" title="Duplicar Turma">
+                        <i class="fas fa-copy"></i>
+                    </button>
                     <button onclick='openModal(${JSON.stringify(turma).replace(/'/g, "&#39;")})' class="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Editar">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -612,6 +615,9 @@
                     <button onclick="goToSchedule(${turma.id})" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm">
                         <i class="fas fa-calendar-alt"></i>
                         <span class="hidden sm:inline">Cronograma</span>
+                    </button>
+                    <button onclick="openDuplicarModal(${turma.id}, '${turma.nome.replace(/'/g, "\\'")}')" class="p-2 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors" title="Duplicar Turma">
+                        <i class="fas fa-copy"></i>
                     </button>
                     <button onclick="checkEncerrarTurma(${turma.id}, '${turma.nome.replace(/'/g, "\\'")}')" class="p-2 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="Encerrar Turma">
                         <i class="fas fa-check-double"></i>
@@ -800,7 +806,123 @@
                 });
         }
 
+        let duplicarTurmaId = null;
+        let duplicarTurmaNomeOriginal = '';
+
+        function openDuplicarModal(turmaId, turmaNome) {
+            duplicarTurmaId = turmaId;
+            duplicarTurmaNomeOriginal = turmaNome;
+            document.getElementById('duplicar-turma-nome-original').textContent = turmaNome;
+            document.getElementById('duplicar-novo-nome').value = turmaNome + ' (Copia)';
+            document.getElementById('duplicar-modal').classList.remove('hidden');
+        }
+
+        function closeDuplicarModal() {
+            document.getElementById('duplicar-modal').classList.add('hidden');
+            duplicarTurmaId = null;
+            duplicarTurmaNomeOriginal = '';
+        }
+
+        async function confirmarDuplicar() {
+            if (!duplicarTurmaId) return;
+            
+            const novoNome = document.getElementById('duplicar-novo-nome').value.trim();
+            if (!novoNome) {
+                alert('Por favor, informe um nome para a nova turma.');
+                return;
+            }
+            
+            const btn = document.getElementById('btn-confirmar-duplicar');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Duplicando...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`/api/turmas/${duplicarTurmaId}/duplicar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ novo_nome: novoNome })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                closeDuplicarModal();
+                loadTurmas();
+                
+                setTimeout(() => {
+                    alert(`Turma duplicada com sucesso!\n${data.schedules_copiados} semanas foram copiadas para a nova turma.`);
+                }, 100);
+            } catch (error) {
+                console.error('Erro ao duplicar turma:', error);
+                alert('Erro ao duplicar turma. Tente novamente.');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
         loadTurmas();
     </script>
+
+    <div id="duplicar-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden overflow-y-auto">
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4 my-8 shadow-xl">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-copy text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Duplicar Turma</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Copiar planejamento completo</p>
+                    </div>
+                </div>
+                <button onclick="closeDuplicarModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    <i class="fas fa-times text-gray-500"></i>
+                </button>
+            </div>
+            
+            <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-info-circle text-purple-500 mt-0.5"></i>
+                    <div class="text-sm text-purple-700 dark:text-purple-300">
+                        <p class="font-medium mb-1">O que sera copiado:</p>
+                        <ul class="list-disc list-inside space-y-1 text-purple-600 dark:text-purple-400">
+                            <li>Todas as semanas do cronograma</li>
+                            <li>Atividades, capacidades e conhecimentos</li>
+                            <li>Configuracoes da turma (dias, horarios, etc)</li>
+                        </ul>
+                        <p class="mt-2 text-purple-500 dark:text-purple-400"><strong>Nota:</strong> O progresso das semanas sera zerado na nova turma.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Turma Original</label>
+                <p id="duplicar-turma-nome-original" class="text-gray-800 dark:text-white font-medium"></p>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome da Nova Turma</label>
+                <input type="text" id="duplicar-novo-nome" required
+                    class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-purple-500 dark:text-white"
+                    placeholder="Digite o nome da nova turma">
+            </div>
+            
+            <div class="flex gap-3">
+                <button type="button" onclick="closeDuplicarModal()" class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" id="btn-confirmar-duplicar" onclick="confirmarDuplicar()" class="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-copy"></i>
+                    Duplicar Turma
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
