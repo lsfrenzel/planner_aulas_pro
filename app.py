@@ -1423,6 +1423,232 @@ def export_xlsx():
     )
 
 
+@app.route("/importar")
+@login_required
+def importar_page():
+    from models import User
+    user_data = User.query.get(session['user_id'])
+    has_photo = bool(user_data and user_data.photo_data)
+    return render_template("importar.html", user=session, user_id=session['user_id'], has_photo=has_photo)
+
+
+@app.route("/api/cronograma/template")
+@login_required
+def download_template():
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cronograma"
+    
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    cell_alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+    thin_border = Border(
+        left=Side(style='thin', color='E5E7EB'),
+        right=Side(style='thin', color='E5E7EB'),
+        top=Side(style='thin', color='E5E7EB'),
+        bottom=Side(style='thin', color='E5E7EB')
+    )
+    
+    ws.merge_cells('A1:G1')
+    title_cell = ws.cell(row=1, column=1, value="Template de Importacao de Cronograma")
+    title_cell.font = Font(bold=True, size=16, color="3B82F6")
+    title_cell.alignment = Alignment(horizontal="center")
+    
+    ws.merge_cells('A2:G2')
+    subtitle_cell = ws.cell(row=2, column=1, value="Preencha as informacoes abaixo e faca o upload para importar as semanas automaticamente")
+    subtitle_cell.font = Font(size=10, color="6B7280")
+    subtitle_cell.alignment = Alignment(horizontal="center")
+    
+    headers = [
+        "Semana",
+        "Atividades Praticas e Teoricas", 
+        "Unidade Curricular",
+        "Capacidades Desenvolvidas",
+        "Conhecimentos Trabalhados",
+        "Recursos"
+    ]
+    
+    header_row = 4
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=header_row, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+    
+    example_data = [
+        [1, "Apresentacao do curso e introducao aos conceitos basicos", "Fundamentos de Programacao", "Compreender os conceitos basicos de logica de programacao\nIdentificar estruturas de dados simples", "Algoritmos\nLogica de programacao\nVariaveis e tipos de dados", "Computador, Projetor, Material didatico"],
+        [2, "Pratica de algoritmos e estruturas de controle", "Fundamentos de Programacao", "Desenvolver algoritmos utilizando estruturas de controle\nAplicar estruturas de repeticao", "Estruturas condicionais\nLacos de repeticao\nFuncoes", "Laboratoro de informatica, IDE de programacao"],
+        [3, "Introducao a orientacao a objetos", "Programacao Orientada a Objetos", "Compreender os principios da POO\nImplementar classes e objetos", "Classes e objetos\nEncapsulamento\nHeranca", "Computador, Ambiente de desenvolvimento"],
+    ]
+    
+    for row_idx, row_data in enumerate(example_data, header_row + 1):
+        for col_idx, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell.alignment = cell_alignment
+            cell.border = thin_border
+    
+    col_widths = [10, 50, 30, 50, 40, 35]
+    for i, width in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = width
+    
+    for row in range(header_row + 1, header_row + 51):
+        for col in range(1, 7):
+            cell = ws.cell(row=row, column=col)
+            cell.border = thin_border
+            cell.alignment = cell_alignment
+    
+    ws_instrucoes = wb.create_sheet(title="Instrucoes")
+    
+    instrucoes = [
+        ("Instrucoes de Preenchimento", True, 16),
+        ("", False, 11),
+        ("1. SEMANA: Numero da semana (obrigatorio). Deve ser um numero inteiro.", False, 11),
+        ("", False, 11),
+        ("2. ATIVIDADES PRATICAS E TEORICAS: Descricao das atividades da semana.", False, 11),
+        ("   Pode incluir tanto atividades praticas quanto teoricas.", False, 11),
+        ("", False, 11),
+        ("3. UNIDADE CURRICULAR: Nome da disciplina ou modulo.", False, 11),
+        ("", False, 11),
+        ("4. CAPACIDADES DESENVOLVIDAS: Liste as capacidades que serao desenvolvidas.", False, 11),
+        ("   Separe cada capacidade em uma linha diferente (pressione Alt+Enter para quebra de linha).", False, 11),
+        ("", False, 11),
+        ("5. CONHECIMENTOS TRABALHADOS: Liste os conhecimentos abordados.", False, 11),
+        ("   Separe cada conhecimento em uma linha diferente.", False, 11),
+        ("", False, 11),
+        ("6. RECURSOS: Materiais e recursos necessarios para a semana.", False, 11),
+        ("   Pode ser uma lista separada por virgulas.", False, 11),
+        ("", False, 11),
+        ("IMPORTANTE:", True, 12),
+        ("- A primeira linha de dados (linha 5) contem exemplos. Pode mante-los ou apaga-los.", False, 11),
+        ("- Nao altere os cabecalhos na linha 4.", False, 11),
+        ("- Semanas com numero duplicado serao ignoradas.", False, 11),
+        ("- Linhas sem numero de semana serao ignoradas.", False, 11),
+    ]
+    
+    for row_idx, (texto, negrito, tamanho) in enumerate(instrucoes, 1):
+        cell = ws_instrucoes.cell(row=row_idx, column=1, value=texto)
+        cell.font = Font(bold=negrito, size=tamanho, color="3B82F6" if negrito else "374151")
+    
+    ws_instrucoes.column_dimensions['A'].width = 100
+    
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    return send_file(
+        buffer,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='template_cronograma.xlsx'
+    )
+
+
+@app.route("/api/cronograma/importar", methods=["POST"])
+@login_required
+def importar_cronograma():
+    from models import Schedule, Turma
+    from openpyxl import load_workbook
+    
+    user_id = session['user_id']
+    
+    turma_id = request.form.get('turma_id', type=int)
+    if not turma_id:
+        flash("Selecione uma turma para importar o cronograma.", "error")
+        return redirect(url_for('importar_page'))
+    
+    turma = Turma.query.filter_by(id=turma_id, user_id=user_id, active=True).first()
+    if not turma:
+        flash("Turma nao encontrada.", "error")
+        return redirect(url_for('importar_page'))
+    
+    if 'arquivo' not in request.files:
+        flash("Nenhum arquivo enviado.", "error")
+        return redirect(url_for('importar_page'))
+    
+    arquivo = request.files['arquivo']
+    if arquivo.filename == '':
+        flash("Nenhum arquivo selecionado.", "error")
+        return redirect(url_for('importar_page'))
+    
+    if not arquivo.filename.endswith(('.xlsx', '.xls')):
+        flash("Formato de arquivo invalido. Use arquivos .xlsx ou .xls", "error")
+        return redirect(url_for('importar_page'))
+    
+    try:
+        wb = load_workbook(arquivo, data_only=True)
+        ws = wb.active
+        
+        semanas_existentes = set()
+        schedules_existentes = Schedule.query.filter_by(user_id=user_id, turma_id=turma_id).all()
+        for s in schedules_existentes:
+            semanas_existentes.add(s.semana)
+        
+        semanas_importadas = 0
+        semanas_ignoradas = 0
+        erros = []
+        
+        header_row = 4
+        for row_idx in range(header_row + 1, ws.max_row + 1):
+            semana_cell = ws.cell(row=row_idx, column=1).value
+            
+            if semana_cell is None or str(semana_cell).strip() == '':
+                continue
+            
+            try:
+                semana = int(semana_cell)
+            except (ValueError, TypeError):
+                erros.append(f"Linha {row_idx}: Numero de semana invalido '{semana_cell}'")
+                continue
+            
+            if semana in semanas_existentes:
+                semanas_ignoradas += 1
+                continue
+            
+            atividades = str(ws.cell(row=row_idx, column=2).value or '').strip()
+            unidade_curricular = str(ws.cell(row=row_idx, column=3).value or '').strip()
+            capacidades = str(ws.cell(row=row_idx, column=4).value or '').strip()
+            conhecimentos = str(ws.cell(row=row_idx, column=5).value or '').strip()
+            recursos = str(ws.cell(row=row_idx, column=6).value or '').strip()
+            
+            schedule = Schedule(
+                user_id=user_id,
+                turma_id=turma_id,
+                semana=semana,
+                atividades=atividades,
+                unidade_curricular=unidade_curricular,
+                capacidades=capacidades,
+                conhecimentos=conhecimentos,
+                recursos=recursos
+            )
+            db.session.add(schedule)
+            semanas_existentes.add(semana)
+            semanas_importadas += 1
+        
+        db.session.commit()
+        
+        mensagem = f"Importacao concluida! {semanas_importadas} semana(s) importada(s)"
+        if semanas_ignoradas > 0:
+            mensagem += f", {semanas_ignoradas} ignorada(s) por ja existirem"
+        if erros:
+            mensagem += f". {len(erros)} erro(s) encontrado(s)"
+        
+        flash(mensagem, "success" if semanas_importadas > 0 else "warning")
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erro ao importar cronograma: {str(e)}")
+        flash(f"Erro ao processar arquivo: {str(e)}", "error")
+    
+    return redirect(url_for('importar_page'))
+
+
 @app.after_request
 def add_header(response):
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
