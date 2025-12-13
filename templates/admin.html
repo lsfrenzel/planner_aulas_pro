@@ -273,6 +273,7 @@
         let editMode = false;
         let deleteUserId = null;
         let currentTab = 'users';
+        let currentContentModalData = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             initTheme();
@@ -483,6 +484,7 @@
         }
 
         function showContentModal(data) {
+            currentContentModalData = data;
             document.getElementById('contentModalTitle').textContent = data.user.name;
             document.getElementById('contentModalSubtitle').textContent = `${data.user.email} - ${data.total_turmas} turma(s)`;
             
@@ -514,81 +516,123 @@
                         </div>
                     </div>
                     
-                    <div class="space-y-4">
-                        ${data.turmas.map(turma => `
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                                <div class="bg-${turma.cor}-50 dark:bg-${turma.cor}-900/20 p-4 flex items-center justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 bg-${turma.cor}-500 rounded-lg flex items-center justify-center">
-                                            <i class="fas fa-chalkboard text-white"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="font-semibold text-gray-800 dark:text-white">${turma.nome}</h4>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400">${turma.descricao || 'Sem descricao'}</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        ${turma.concluida ? `
-                                            <span class="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
-                                                <i class="fas fa-flag-checkered mr-1"></i>Encerrada
-                                            </span>
-                                        ` : `
-                                            <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
-                                                <i class="fas fa-play mr-1"></i>Ativa
-                                            </span>
-                                        `}
-                                    </div>
-                                </div>
-                                <div class="p-4">
-                                    <div class="flex items-center gap-4 mb-3 text-sm text-gray-500 dark:text-gray-400">
-                                        <span><i class="fas fa-clock mr-1"></i>${turma.carga_horaria || 0}h carga horaria</span>
-                                        ${turma.data_inicio ? `<span><i class="fas fa-calendar mr-1"></i>${new Date(turma.data_inicio).toLocaleDateString('pt-BR')}</span>` : ''}
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                                <div class="h-full bg-primary-500 rounded-full" style="width: ${turma.total_semanas > 0 ? (turma.semanas_concluidas / turma.total_semanas * 100) : 0}%"></div>
-                                            </div>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">${turma.semanas_concluidas}/${turma.total_semanas} semanas</span>
-                                        </div>
-                                    </div>
-                                    ${turma.schedules.length > 0 ? `
-                                        <details class="mt-4">
-                                            <summary class="cursor-pointer text-sm text-primary-500 hover:text-primary-600 font-medium">
-                                                <i class="fas fa-list-ul mr-1"></i>Ver ${turma.schedules.length} semana(s)
-                                            </summary>
-                                            <div class="mt-3 space-y-2 max-h-60 overflow-y-auto">
-                                                ${turma.schedules.map(s => `
-                                                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-sm">
-                                                        <div class="flex items-center justify-between mb-2">
-                                                            <span class="font-medium text-gray-800 dark:text-white">Semana ${s.semana}</span>
-                                                            ${s.completed ? `
-                                                                <span class="text-xs text-green-600 dark:text-green-400"><i class="fas fa-check-circle mr-1"></i>Concluida</span>
-                                                            ` : `
-                                                                <span class="text-xs text-amber-600 dark:text-amber-400"><i class="fas fa-clock mr-1"></i>Pendente</span>
-                                                            `}
-                                                        </div>
-                                                        ${s.unidadeCurricular ? `<p class="text-gray-600 dark:text-gray-300 text-xs mb-1"><strong>UC:</strong> ${s.unidadeCurricular}</p>` : ''}
-                                                        ${s.atividades ? `<p class="text-gray-500 dark:text-gray-400 text-xs line-clamp-2">${s.atividades.substring(0, 100)}${s.atividades.length > 100 ? '...' : ''}</p>` : ''}
-                                                    </div>
-                                                `).join('')}
-                                            </div>
-                                        </details>
-                                    ` : `
-                                        <p class="mt-3 text-sm text-gray-400 dark:text-gray-500 italic">Nenhuma semana cadastrada</p>
-                                    `}
-                                </div>
-                            </div>
-                        `).join('')}
+                    <div class="mb-4">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" id="searchTurmasModal" placeholder="Filtrar turmas..." 
+                                class="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-primary-500 dark:text-white"
+                                oninput="filterTurmasModal(this.value)">
+                        </div>
+                    </div>
+                    
+                    <div id="turmasListContainer" class="space-y-4">
+                        ${renderTurmasList(data.turmas)}
                     </div>
                 `;
             }
             
             document.getElementById('contentModal').classList.remove('hidden');
         }
+        
+        function renderTurmasList(turmas) {
+            if (turmas.length === 0) {
+                return `
+                    <div class="text-center py-8">
+                        <i class="fas fa-search text-2xl text-gray-300 dark:text-gray-600 mb-2"></i>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">Nenhuma turma encontrada</p>
+                    </div>
+                `;
+            }
+            
+            return turmas.map(turma => `
+                <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                    <div class="bg-${turma.cor}-50 dark:bg-${turma.cor}-900/20 p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-${turma.cor}-500 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-chalkboard text-white"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white">${turma.nome}</h4>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">${turma.descricao || 'Sem descricao'}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${turma.concluida ? `
+                                <span class="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
+                                    <i class="fas fa-flag-checkered mr-1"></i>Encerrada
+                                </span>
+                            ` : `
+                                <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
+                                    <i class="fas fa-play mr-1"></i>Ativa
+                                </span>
+                            `}
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center gap-4 mb-3 text-sm text-gray-500 dark:text-gray-400">
+                            <span><i class="fas fa-clock mr-1"></i>${turma.carga_horaria || 0}h carga horaria</span>
+                            ${turma.data_inicio ? `<span><i class="fas fa-calendar mr-1"></i>${new Date(turma.data_inicio).toLocaleDateString('pt-BR')}</span>` : ''}
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div class="h-full bg-primary-500 rounded-full" style="width: ${turma.total_semanas > 0 ? (turma.semanas_concluidas / turma.total_semanas * 100) : 0}%"></div>
+                                </div>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">${turma.semanas_concluidas}/${turma.total_semanas} semanas</span>
+                            </div>
+                        </div>
+                        ${turma.schedules.length > 0 ? `
+                            <details class="mt-4">
+                                <summary class="cursor-pointer text-sm text-primary-500 hover:text-primary-600 font-medium">
+                                    <i class="fas fa-list-ul mr-1"></i>Ver ${turma.schedules.length} semana(s)
+                                </summary>
+                                <div class="mt-3 space-y-2 max-h-60 overflow-y-auto">
+                                    ${turma.schedules.map(s => `
+                                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-sm">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="font-medium text-gray-800 dark:text-white">Semana ${s.semana}</span>
+                                                ${s.completed ? `
+                                                    <span class="text-xs text-green-600 dark:text-green-400"><i class="fas fa-check-circle mr-1"></i>Concluida</span>
+                                                ` : `
+                                                    <span class="text-xs text-amber-600 dark:text-amber-400"><i class="fas fa-clock mr-1"></i>Pendente</span>
+                                                `}
+                                            </div>
+                                            ${s.unidadeCurricular ? `<p class="text-gray-600 dark:text-gray-300 text-xs mb-1"><strong>UC:</strong> ${s.unidadeCurricular}</p>` : ''}
+                                            ${s.atividades ? `<p class="text-gray-500 dark:text-gray-400 text-xs line-clamp-2">${s.atividades.substring(0, 100)}${s.atividades.length > 100 ? '...' : ''}</p>` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </details>
+                        ` : `
+                            <p class="mt-3 text-sm text-gray-400 dark:text-gray-500 italic">Nenhuma semana cadastrada</p>
+                        `}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function filterTurmasModal(searchTerm) {
+            if (!currentContentModalData) return;
+            
+            const search = searchTerm.toLowerCase().trim();
+            let filteredTurmas = currentContentModalData.turmas;
+            
+            if (search) {
+                filteredTurmas = currentContentModalData.turmas.filter(turma => 
+                    turma.nome.toLowerCase().includes(search) || 
+                    (turma.descricao && turma.descricao.toLowerCase().includes(search))
+                );
+            }
+            
+            const container = document.getElementById('turmasListContainer');
+            if (container) {
+                container.innerHTML = renderTurmasList(filteredTurmas);
+            }
+        }
 
         function closeContentModal() {
             document.getElementById('contentModal').classList.add('hidden');
+            currentContentModalData = null;
         }
 
         function setupEventListeners() {
