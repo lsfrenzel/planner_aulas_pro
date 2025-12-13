@@ -273,9 +273,23 @@ def turmas_page():
 @app.route("/perfil")
 @login_required
 def perfil_page():
-    from models import User
+    from models import User, Turma, Schedule
     user = User.query.get(session['user_id'])
-    return render_template("perfil.html", user=session, user_data=user)
+    user_id = session['user_id']
+    
+    turmas_encerradas = Turma.query.filter_by(user_id=user_id, active=True, concluida=True).count()
+    turmas_ativas = Turma.query.filter_by(user_id=user_id, active=True, concluida=False).count()
+    total_semanas = Schedule.query.filter_by(user_id=user_id).count()
+    semanas_concluidas = Schedule.query.filter_by(user_id=user_id, completed=True).count()
+    
+    stats = {
+        'turmas_encerradas': turmas_encerradas,
+        'turmas_ativas': turmas_ativas,
+        'total_semanas': total_semanas,
+        'semanas_concluidas': semanas_concluidas
+    }
+    
+    return render_template("perfil.html", user=session, user_data=user, stats=stats)
 
 
 @app.route("/perfil/atualizar", methods=["POST"])

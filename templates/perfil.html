@@ -89,6 +89,159 @@
             <p class="text-gray-500 dark:text-gray-400 mt-1">Gerencie suas informacoes pessoais</p>
         </div>
 
+        <div class="mb-8 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 rounded-2xl p-1">
+            <div class="bg-white dark:bg-gray-800 rounded-xl p-6">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-trophy text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white">Conquistas do Professor</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Acompanhe seu progresso e conquistas</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/30 rounded-xl p-4 text-center border border-emerald-200 dark:border-emerald-700">
+                        <div class="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/30">
+                            <i class="fas fa-flag-checkered text-white text-xl"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{{ stats.turmas_encerradas }}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 font-medium">Turmas Concluidas</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-4 text-center border border-blue-200 dark:border-blue-700">
+                        <div class="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-blue-500/30">
+                            <i class="fas fa-users text-white text-xl"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ stats.turmas_ativas }}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 font-medium">Turmas Ativas</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl p-4 text-center border border-purple-200 dark:border-purple-700">
+                        <div class="w-14 h-14 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-500/30">
+                            <i class="fas fa-calendar-alt text-white text-xl"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ stats.total_semanas }}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 font-medium">Semanas Criadas</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 rounded-xl p-4 text-center border border-orange-200 dark:border-orange-700">
+                        <div class="w-14 h-14 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-orange-500/30">
+                            <i class="fas fa-check-double text-white text-xl"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-orange-600 dark:text-orange-400">{{ stats.semanas_concluidas }}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 font-medium">Semanas Realizadas</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <i class="fas fa-medal text-amber-500"></i>
+                        Medalhas Conquistadas
+                    </h4>
+                    <div class="flex flex-wrap gap-3">
+                        {% if stats.turmas_encerradas >= 1 %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform cursor-pointer">
+                                <i class="fas fa-award text-white text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Primeira Turma Concluida!
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center opacity-40 cursor-pointer">
+                                <i class="fas fa-award text-gray-400 dark:text-gray-500 text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Conclua sua primeira turma
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if stats.turmas_encerradas >= 5 %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform cursor-pointer">
+                                <i class="fas fa-star text-white text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Mestre: 5 Turmas!
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center opacity-40 cursor-pointer">
+                                <i class="fas fa-star text-gray-400 dark:text-gray-500 text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Conclua 5 turmas
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if stats.turmas_encerradas >= 10 %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform cursor-pointer animate-pulse">
+                                <i class="fas fa-crown text-white text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Lenda: 10 Turmas!
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center opacity-40 cursor-pointer">
+                                <i class="fas fa-crown text-gray-400 dark:text-gray-500 text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Conclua 10 turmas
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if stats.semanas_concluidas >= 50 %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gradient-to-br from-rose-400 to-pink-600 rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform cursor-pointer">
+                                <i class="fas fa-fire text-white text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Dedicacao: 50 Semanas!
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center opacity-40 cursor-pointer">
+                                <i class="fas fa-fire text-gray-400 dark:text-gray-500 text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Complete 50 semanas
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if stats.total_semanas >= 100 %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform cursor-pointer">
+                                <i class="fas fa-rocket text-white text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Produtivo: 100 Semanas Criadas!
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="group relative">
+                            <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center opacity-40 cursor-pointer">
+                                <i class="fas fa-rocket text-gray-400 dark:text-gray-500 text-2xl"></i>
+                            </div>
+                            <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                Crie 100 semanas
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-1">
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 text-center">
@@ -100,6 +253,19 @@
                         {% else %}
                         <div class="w-32 h-32 rounded-full bg-primary-500 flex items-center justify-center border-4 border-primary-600">
                             <span class="text-4xl font-bold text-white">{{ user_data.name[0]|upper }}</span>
+                        </div>
+                        {% endif %}
+                        {% if stats.turmas_encerradas >= 10 %}
+                        <div class="absolute -bottom-1 -right-1 w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center border-3 border-white dark:border-gray-800 shadow-lg">
+                            <i class="fas fa-crown text-white text-sm"></i>
+                        </div>
+                        {% elif stats.turmas_encerradas >= 5 %}
+                        <div class="absolute -bottom-1 -right-1 w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center border-3 border-white dark:border-gray-800 shadow-lg">
+                            <i class="fas fa-star text-white text-sm"></i>
+                        </div>
+                        {% elif stats.turmas_encerradas >= 1 %}
+                        <div class="absolute -bottom-1 -right-1 w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center border-3 border-white dark:border-gray-800 shadow-lg">
+                            <i class="fas fa-award text-white text-sm"></i>
                         </div>
                         {% endif %}
                     </div>
