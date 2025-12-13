@@ -761,6 +761,65 @@ def delete_user(user_id):
     return jsonify({"message": "Usuario excluido com sucesso"})
 
 
+@app.route("/api/admin/users/<int:user_id>/content", methods=["GET"])
+@admin_required
+def get_user_content(user_id):
+    from models import User, Turma, Schedule
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "Usuario nao encontrado"}), 404
+    
+    turmas = Turma.query.filter_by(user_id=user_id, active=True).order_by(Turma.nome).all()
+    
+    turmas_data = []
+    for turma in turmas:
+        schedules = Schedule.query.filter_by(user_id=user_id, turma_id=turma.id).order_by(Schedule.semana).all()
+        total_semanas = len(schedules)
+        semanas_concluidas = sum(1 for s in schedules if s.completed)
+        
+        turma_dict = turma.to_dict()
+        turma_dict['total_semanas'] = total_semanas
+        turma_dict['semanas_concluidas'] = semanas_concluidas
+        turma_dict['schedules'] = [s.to_dict() for s in schedules]
+        turmas_data.append(turma_dict)
+    
+    return jsonify({
+        "user": user.to_dict(),
+        "turmas": turmas_data,
+        "total_turmas": len(turmas),
+        "total_turmas_ativas": len([t for t in turmas if not t.concluida]),
+        "total_turmas_concluidas": len([t for t in turmas if t.concluida])
+    })
+
+
+@app.route("/api/admin/overview", methods=["GET"])
+@admin_required
+def get_admin_overview():
+    from models import User, Turma, Schedule
+    
+    users = User.query.filter_by(active=True).all()
+    overview = []
+    
+    for user in users:
+        turmas_count = Turma.query.filter_by(user_id=user.id, active=True).count()
+        turmas_ativas = Turma.query.filter_by(user_id=user.id, active=True, concluida=False).count()
+        turmas_concluidas = Turma.query.filter_by(user_id=user.id, active=True, concluida=True).count()
+        total_semanas = Schedule.query.filter_by(user_id=user.id).count()
+        semanas_concluidas = Schedule.query.filter_by(user_id=user.id, completed=True).count()
+        
+        overview.append({
+            "user": user.to_dict(),
+            "turmas_count": turmas_count,
+            "turmas_ativas": turmas_ativas,
+            "turmas_concluidas": turmas_concluidas,
+            "total_semanas": total_semanas,
+            "semanas_concluidas": semanas_concluidas
+        })
+    
+    return jsonify(overview)
+
+
 @app.route("/api/weeks", methods=["GET"])
 @login_required
 def get_weeks():
