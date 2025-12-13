@@ -119,6 +119,8 @@ def run_migrations():
         ("turmas", "horario_fim", "ALTER TABLE turmas ADD COLUMN horario_fim VARCHAR(10)"),
         ("turmas", "data_inicio", "ALTER TABLE turmas ADD COLUMN data_inicio DATE"),
         ("turmas", "data_fim", "ALTER TABLE turmas ADD COLUMN data_fim DATE"),
+        ("turmas", "concluida", "ALTER TABLE turmas ADD COLUMN concluida BOOLEAN DEFAULT FALSE"),
+        ("turmas", "data_conclusao", "ALTER TABLE turmas ADD COLUMN data_conclusao TIMESTAMP"),
         ("users", "cargo", "ALTER TABLE users ADD COLUMN cargo VARCHAR(100) DEFAULT ''"),
         ("users", "photo", "ALTER TABLE users ADD COLUMN photo VARCHAR(255) DEFAULT ''"),
         ("users", "photo_data", "ALTER TABLE users ADD COLUMN photo_data TEXT DEFAULT ''"),
@@ -386,7 +388,7 @@ def alterar_senha():
 def get_turmas():
     from models import Turma
     user_id = session['user_id']
-    turmas = Turma.query.filter_by(user_id=user_id, active=True).order_by(Turma.nome).all()
+    turmas = Turma.query.filter_by(user_id=user_id, active=True, concluida=False).order_by(Turma.nome).all()
     return jsonify([t.to_dict() for t in turmas])
 
 
@@ -511,6 +513,120 @@ def delete_turma(turma_id):
     db.session.commit()
     
     return jsonify({"message": "Turma excluida com sucesso"})
+
+
+@app.route("/api/turmas-encerradas", methods=["GET"])
+@login_required
+def get_turmas_encerradas():
+    from models import Turma
+    user_id = session['user_id']
+    turmas = Turma.query.filter_by(user_id=user_id, active=True, concluida=True).order_by(Turma.data_conclusao.desc()).all()
+    return jsonify([t.to_dict() for t in turmas])
+
+
+@app.route("/api/turmas/<int:turma_id>/encerrar", methods=["POST"])
+@login_required
+def encerrar_turma(turma_id):
+    from models import Turma
+    from datetime import datetime
+    
+    user_id = session['user_id']
+    turma = Turma.query.filter_by(id=turma_id, user_id=user_id, active=True).first()
+    
+    if not turma:
+        return jsonify({"error": "Turma nao encontrada"}), 404
+    
+    turma.concluida = True
+    turma.data_conclusao = datetime.utcnow()
+    db.session.commit()
+    
+    return jsonify({
+        "message": "Turma encerrada com sucesso!",
+        "turma": turma.to_dict()
+    })
+
+
+@app.route("/api/turmas/<int:turma_id>/restaurar", methods=["POST"])
+@login_required
+def restaurar_turma(turma_id):
+    from models import Turma
+    
+    user_id = session['user_id']
+    turma = Turma.query.filter_by(id=turma_id, user_id=user_id, active=True, concluida=True).first()
+    
+    if not turma:
+        return jsonify({"error": "Turma nao encontrada ou nao esta encerrada"}), 404
+    
+    turma.concluida = False
+    turma.data_conclusao = None
+    db.session.commit()
+    
+    return jsonify({
+        "message": "Turma restaurada com sucesso!",
+        "turma": turma.to_dict()
+    })
+
+
+@app.route("/api/turmas/<int:turma_id>/check-conclusao", methods=["GET"])
+@login_required
+def check_turma_conclusao(turma_id):
+    from models import Turma, Schedule
+    
+    user_id = session['user_id']
+    turma = Turma.query.filter_by(id=turma_id, user_id=user_id, active=True).first()
+    
+    if not turma:
+        return jsonify({"error": "Turma nao encontrada"}), 404
+    
+    schedules = Schedule.query.filter_by(user_id=user_id, turma_id=turma_id).all()
+    
+    if not schedules:
+        return jsonify({
+            "pode_encerrar": False,
+            "motivo": "Turma sem semanas cadastradas",
+            "total_semanas": 0,
+            "semanas_concluidas": 0,
+            "total_capacidades": 0,
+            "capacidades_concluidas": 0
+        })
+    
+    total_semanas = len(schedules)
+    semanas_concluidas = sum(1 for s in schedules if s.completed)
+    
+    total_capacidades = 0
+    capacidades_concluidas = 0
+    
+    for s in schedules:
+        caps = [c.strip() for c in s.capacidades.split('\n') if c.strip()]
+        total_capacidades += len(caps)
+        
+        completed_list = s.capacidades_completed.split(',') if s.capacidades_completed else []
+        completed_list = [x for x in completed_list if x]
+        capacidades_concluidas += len(completed_list)
+    
+    todas_semanas_concluidas = semanas_concluidas == total_semanas
+    todas_capacidades_concluidas = capacidades_concluidas == total_capacidades if total_capacidades > 0 else True
+    
+    pode_encerrar = todas_semanas_concluidas and todas_capacidades_concluidas and total_semanas > 0
+    
+    motivo = ""
+    if not pode_encerrar:
+        if total_semanas == 0:
+            motivo = "Turma sem semanas cadastradas"
+        elif not todas_semanas_concluidas:
+            motivo = f"Faltam {total_semanas - semanas_concluidas} semanas para concluir"
+        elif not todas_capacidades_concluidas:
+            motivo = f"Faltam {total_capacidades - capacidades_concluidas} capacidades para concluir"
+    
+    return jsonify({
+        "pode_encerrar": pode_encerrar,
+        "motivo": motivo,
+        "total_semanas": total_semanas,
+        "semanas_concluidas": semanas_concluidas,
+        "total_capacidades": total_capacidades,
+        "capacidades_concluidas": capacidades_concluidas,
+        "ja_encerrada": turma.concluida
+    })
 
 
 @app.route("/api/users", methods=["GET"])

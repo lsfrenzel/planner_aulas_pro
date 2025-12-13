@@ -49,6 +49,8 @@ class Turma(db.Model):
     data_inicio = db.Column(db.Date, nullable=True)
     data_fim = db.Column(db.Date, nullable=True)
     active = db.Column(db.Boolean, default=True)
+    concluida = db.Column(db.Boolean, default=False)
+    data_conclusao = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     schedules = db.relationship('Schedule', backref='turma', lazy=True, cascade='all, delete-orphan')
@@ -67,6 +69,8 @@ class Turma(db.Model):
             'data_inicio': self.data_inicio.isoformat() if self.data_inicio else None,
             'data_fim': self.data_fim.isoformat() if self.data_fim else None,
             'active': self.active,
+            'concluida': self.concluida,
+            'data_conclusao': self.data_conclusao.isoformat() if self.data_conclusao else None,
             'schedule_count': schedule_count,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
