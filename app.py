@@ -916,7 +916,7 @@ def get_turmas_progress():
     from models import Turma, Schedule
     
     user_id = session['user_id']
-    turmas = Turma.query.filter_by(user_id=user_id, active=True).all()
+    turmas = Turma.query.filter_by(user_id=user_id, active=True, concluida=False).all()
     
     progress_data = []
     for turma in turmas:
