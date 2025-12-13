@@ -24,6 +24,8 @@ Sistema web completo para planejamento de aulas, desenvolvido com Flask (Python)
 - `POST /api/users` - Adiciona novo usuário
 - `PUT /api/users/<id>` - Edita usuário
 - `DELETE /api/users/<id>` - Remove usuário
+- `GET /api/admin/overview` - Visao geral de todos usuarios com estatisticas
+- `GET /api/admin/users/<id>/content` - Visualiza turmas e semanas de um usuario especifico
 
 #### API de Semanas
 - `GET /api/weeks` - Lista todas as semanas do usuário
