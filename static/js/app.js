@@ -328,12 +328,32 @@ function openModal(week = null) {
     }
     
     modal.classList.remove('hidden');
+    
+    setTimeout(() => {
+        if (editMode) {
+            document.getElementById('formAtividades').focus();
+        } else {
+            document.getElementById('formSemana').focus();
+        }
+    }, 100);
 }
 
 function closeModal() {
     document.getElementById('weekModal').classList.add('hidden');
     document.getElementById('weekForm').reset();
 }
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const weekModal = document.getElementById('weekModal');
+        const confirmModal = document.getElementById('confirmModal');
+        if (!weekModal.classList.contains('hidden')) {
+            closeModal();
+        } else if (!confirmModal.classList.contains('hidden')) {
+            closeConfirmModal();
+        }
+    }
+});
 
 function openConfirmModal() {
     document.getElementById('confirmModal').classList.remove('hidden');
