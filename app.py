@@ -227,10 +227,14 @@ def index():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    from models import Schedule, User
+    from models import Schedule, User, Turma
     
     user_id = session['user_id']
-    schedules = Schedule.query.filter_by(user_id=user_id).order_by(Schedule.semana).all()
+    # Query schedules that belong to active turmas
+    schedules = Schedule.query.join(Turma).filter(
+        Schedule.user_id == user_id,
+        Turma.active == True
+    ).order_by(Schedule.semana).all()
     
     weeks = [s.to_dict() for s in schedules]
     
@@ -515,7 +519,7 @@ def update_turma(turma_id):
 @app.route("/api/turmas/<int:turma_id>", methods=["DELETE"])
 @login_required
 def delete_turma(turma_id):
-    from models import Turma
+    from models import Turma, Schedule
     
     user_id = session['user_id']
     turma = Turma.query.filter_by(id=turma_id, user_id=user_id).first()
@@ -523,7 +527,13 @@ def delete_turma(turma_id):
     if not turma:
         return jsonify({"error": "Turma nao encontrada"}), 404
     
+    # Soft delete the turma
     turma.active = False
+    
+    # We don't necessarily need to delete the schedules if we filter them in the dashboard,
+    # but if the user wants them "gone", we should be consistent.
+    # The dashboard fix above handles the visibility.
+    
     db.session.commit()
     
     return jsonify({"message": "Turma excluida com sucesso"})
